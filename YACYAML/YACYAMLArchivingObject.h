@@ -17,7 +17,7 @@ struct yaml_emitter_s;
 
 - (id)initWithRepresentedObject:(id)representedObject
                     forArchiver:(YACYAMLKeyedArchiver *)archiver;
-- (void)encodeChild:(id)obj forKey:(NSString *)key;
+- (void)encodeChild:(id)obj forKey:(id)key;
 
 - (void)emitWithEmitter:(struct yaml_emitter_s *)emitter;
 

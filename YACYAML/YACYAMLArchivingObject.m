@@ -22,7 +22,7 @@
     id _representedObject;
     
     NSMutableArray *_unkeyedChildren;
-    NSMutableDictionary *_keyedChildren;
+    NSMutableArray *_keyedChildren;
     
     BOOL _needsAnchor;
 }
@@ -71,15 +71,15 @@
     return archivingObject;
 }
 
-- (void)encodeChild:(id)obj forKey:(NSString *)key
+- (void)encodeChild:(id)obj forKey:(id)key
 {
     YACYAMLArchivingObject *archivingObject = [self _archivingObjectForObject:obj];
     if(key) {
         if(!_keyedChildren) {
-            _keyedChildren = [[NSMutableDictionary alloc] init];
+            _keyedChildren = [[NSMutableArray alloc] init];
         }
-        [_keyedChildren setObject:archivingObject
-                           forKey:key];
+        [_keyedChildren addObject:[self _archivingObjectForObject:key]];
+        [_keyedChildren addObject:archivingObject];
     } else {
         if(!_unkeyedChildren) {
             _unkeyedChildren = [[NSMutableArray alloc] init];
@@ -151,20 +151,10 @@
                 //yaml_event_delete(&event);
             }
             if(_keyedChildren) {
-                for(NSString *key in [_keyedChildren keyEnumerator]) {
-                    const char *keyChars = [key UTF8String];
-                    yaml_scalar_event_initialize(&event,
-                                                 NULL,
-                                                 (yaml_char_t *)YAML_STR_TAG, 
-                                                 (yaml_char_t *)keyChars,
-                                                 strlen(keyChars),
-                                                 1,
-                                                 1,
-                                                 YAML_ANY_SCALAR_STYLE);
-                    yaml_emitter_emit(emitter, &event);
-                    //yaml_event_delete(&event);
-
-                    [[_keyedChildren objectForKey:key] emitWithEmitter:emitter];
+                NSParameterAssert((_keyedChildren.count % 2) == 0);
+                
+                for(YACYAMLArchivingObject *key in _keyedChildren) {
+                    [key emitWithEmitter:emitter];
                 }
 
                 yaml_mapping_end_event_initialize(&event);

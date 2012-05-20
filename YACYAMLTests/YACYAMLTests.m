@@ -79,6 +79,7 @@
                                      @"three", @"threekey",
                                      [NSArray arrayWithObjects:@"one", @"two", @"three", nil], @"fourKey",
                                      nil], @"dict",
+                                    [NSArray arrayWithObjects:@"array", nil], [NSArray arrayWithObjects:@"arrayThatIsAKey", nil],
                                     nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];

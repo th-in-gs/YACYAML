@@ -34,6 +34,10 @@
 
 - (void)YACYAMLEncodeWithCoder:(YACYAMLKeyedArchiver *)coder
 {
+    // Note that NSCoder requires our keys to be strings, but we know that,
+    // underneath, a YACYAMLArchivingObject can deal with keys of arbitraty 
+    // types, so we take advantege of that when we store NSDictionaries as
+    // native YAML mappings.
     for(id key in [self keyEnumerator]) {
         [coder encodeObject:[self objectForKey:key]
                      forKey:key];
