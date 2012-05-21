@@ -12,10 +12,12 @@
 
 @interface YACYAMLKeyedArchiver ()
 
+@property (nonatomic, readonly) BOOL scalarAnchorsAllowed;
+
 - (void)pushArchivingObject:(YACYAMLArchivingObject *)archivingObject;
 - (void)popArchivingObject;
 
 - (YACYAMLArchivingObject *)previouslySeenArchivingObjectForObject:(id)object;
-
+- (NSString *)generateAnchor;
 
 @end

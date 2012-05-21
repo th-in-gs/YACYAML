@@ -1,0 +1,3 @@
+Ideas:
+Generate anchors for strings etc. only if the anchor would take up less space
+than referring to the string directly.  Make this the default mode for scalars.

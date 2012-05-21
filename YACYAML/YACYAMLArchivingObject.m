@@ -25,6 +25,7 @@
     NSMutableArray *_keyedChildren;
     
     BOOL _needsAnchor;
+    NSString *_emittedAnchor;
 }
 
 @synthesize representedObject = _representedObject;
@@ -57,16 +58,16 @@
         archivingObject = [[YACYAMLArchivingObject alloc] initWithRepresentedObject:obj
                                                                         forArchiver:_archiver];
         
-        // Make sure to add this to the _objectToArchivingObject map before 
-        // encoding it, so that if it's encountered again (i.e. in a cycle)
-        // we can refer to it and not just recurse for ever.
-        [_archiver pushArchivingObject:archivingObject];
-        
-        if(![obj respondsToSelector:@selector(YACYAMLScalarString)]) {
+        if([obj respondsToSelector:@selector(YACYAMLScalarString)]) {
+            if(_archiver.scalarAnchorsAllowed) {
+                [_archiver pushArchivingObject:archivingObject];
+                [_archiver popArchivingObject];
+            }
+        } else {
+            [_archiver pushArchivingObject:archivingObject];
             [obj YACYAMLEncodeWithCoder:_archiver];
+            [_archiver popArchivingObject];
         }
-        
-        [_archiver popArchivingObject];
     }
     return archivingObject;
 }
@@ -94,91 +95,114 @@
     id obj = self.representedObject;
     
     if(obj) {
-        if([obj respondsToSelector:@selector(YACYAMLScalarString)]) {
-            NSString *string = [(id<YACYAMLArchivingScalar>)obj YACYAMLScalarString];
-                        
-            const char *stringChars = [string UTF8String];
-            
-            yaml_scalar_event_initialize(&event,
-                                         NULL,
-                                         (yaml_char_t *)YAML_STR_TAG, 
-                                         (yaml_char_t *)stringChars,
-                                         strlen(stringChars),
-                                         1,
-                                         1,
-                                         YAML_ANY_SCALAR_STYLE);
+        if(_emittedAnchor) {
+            // An anchor has already been emitted for this object,
+            // so just refer to it rather than emitting again.
+            yaml_alias_event_initialize(&event, (yaml_char_t *)_emittedAnchor.UTF8String);
             yaml_emitter_emit(emitter, &event);
-            //yaml_event_delete(&event);
         } else {
-            if(_keyedChildren) {
-                yaml_mapping_start_event_initialize(&event, 
-                                                    NULL,
-                                                    (yaml_char_t *)YAML_MAP_TAG, 
-                                                    1, 
-                                                    YAML_ANY_MAPPING_STYLE);
-                yaml_emitter_emit(emitter, &event);
-                //yaml_event_delete(&event);
+            yaml_char_t *anchor = NULL;
+            if(_needsAnchor) {
+                // We know that this object will be referred to again later in
+                // the archive, so generate an anchor for it.
+                _emittedAnchor = [_archiver generateAnchor];
+                anchor = (yaml_char_t *)_emittedAnchor.UTF8String;
+            }
+            
+            if([obj respondsToSelector:@selector(YACYAMLScalarString)]) {
+                // This is a scalar object.  Emit it.
+                NSString *string = [(id<YACYAMLArchivingScalar>)obj YACYAMLScalarString];
+                            
+                const char *stringChars = [string UTF8String];
                 
-                if(_unkeyedChildren) {
-                    static const char *key = "__unkeyedChildren";
-                    yaml_scalar_event_initialize(&event,
-                                                 NULL,
-                                                 (yaml_char_t *)YAML_STR_TAG, 
-                                                 (yaml_char_t *)key,
-                                                 strlen(key),
-                                                 1,
-                                                 1,
-                                                 YAML_ANY_SCALAR_STYLE);
+                yaml_scalar_event_initialize(&event,
+                                             anchor,
+                                             (yaml_char_t *)YAML_STR_TAG, 
+                                             (yaml_char_t *)stringChars,
+                                             strlen(stringChars),
+                                             1,
+                                             1,
+                                             YAML_ANY_SCALAR_STYLE);
+                yaml_emitter_emit(emitter, &event);
+            } else {
+                // This is an obect with children.
+                if(_keyedChildren) {
+                    // This object has keyed chidren, so we use a map to 
+                    // represent it.
+                    yaml_mapping_start_event_initialize(&event, 
+                                                        anchor,
+                                                        (yaml_char_t *)YAML_MAP_TAG, 
+                                                        1, 
+                                                        YAML_ANY_MAPPING_STYLE);
                     yaml_emitter_emit(emitter, &event);
-                    //yaml_event_delete(&event);
-                }
-            }
-            if(_unkeyedChildren) {
-                yaml_sequence_start_event_initialize(&event,
+                    
+                    if(_unkeyedChildren) {
+                        // This object has keyed children /and/ unkeyed
+                        // children.  Put the unkeyed children in a sequence 
+                        // under a special key.
+                        static const char *key = "__unkeyedChildren";
+                        yaml_scalar_event_initialize(&event,
                                                      NULL,
-                                                     (yaml_char_t *)YAML_SEQ_TAG,
-                                                     1, 
-                                                     YAML_ANY_SEQUENCE_STYLE);
-                yaml_emitter_emit(emitter, &event);
-                //yaml_event_delete(&event);
-                
-                for(YACYAMLArchivingObject *child in _unkeyedChildren) {
-                    [child emitWithEmitter:emitter];
+                                                     (yaml_char_t *)YAML_STR_TAG, 
+                                                     (yaml_char_t *)key,
+                                                     strlen(key),
+                                                     1,
+                                                     1,
+                                                     YAML_ANY_SCALAR_STYLE);
+                        yaml_emitter_emit(emitter, &event);
+                    }
                 }
-                
-                yaml_sequence_end_event_initialize(&event);
-                yaml_emitter_emit(emitter, &event);
-                //yaml_event_delete(&event);
-            }
-            if(_keyedChildren) {
-                NSParameterAssert((_keyedChildren.count % 2) == 0);
-                
-                for(YACYAMLArchivingObject *key in _keyedChildren) {
-                    [key emitWithEmitter:emitter];
+                if(_unkeyedChildren || !_keyedChildren) {
+                    // Emit a sequence for the unkeyed children.
+                    // Note that, in the case that there are no keyed children,
+                    // we emit this even if there's no unkeyed children, so a 
+                    // non-scalar object with no children is represented as an
+                    // empty sequence.
+                    yaml_sequence_start_event_initialize(&event,
+                                                         _keyedChildren ? NULL : anchor,
+                                                         (yaml_char_t *)YAML_SEQ_TAG,
+                                                         1, 
+                                                         YAML_ANY_SEQUENCE_STYLE);
+                    yaml_emitter_emit(emitter, &event);
+                    
+                    for(YACYAMLArchivingObject *child in _unkeyedChildren) {
+                        [child emitWithEmitter:emitter];
+                    }
+                    
+                    yaml_sequence_end_event_initialize(&event);
+                    yaml_emitter_emit(emitter, &event);
                 }
+                if(_keyedChildren) {
+                    NSParameterAssert((_keyedChildren.count % 2) == 0);
+                    
+                    // Emit the keyed children (the mapping we're emitting these
+                    // into was started above, before we dealt with any
+                    // potential unkeyed children).
+                    for(YACYAMLArchivingObject *key in _keyedChildren) {
+                        [key emitWithEmitter:emitter];
+                    }
 
-                yaml_mapping_end_event_initialize(&event);
-                yaml_emitter_emit(emitter, &event);
-                //yaml_event_delete(&event);
+                    // All keyed children emitted, close the mapping.
+                    yaml_mapping_end_event_initialize(&event);
+                    yaml_emitter_emit(emitter, &event);
+                }
             }
         }
     } else {
         // No represented object means we're the root of the tree.
-        yaml_document_start_event_initialize(&event, 
-                                             NULL, 
-                                             NULL, 
-                                             NULL,
-                                             1);
-        yaml_emitter_emit(emitter, &event);
-        //yaml_event_delete(&event);
-
         for(YACYAMLArchivingObject *child in _unkeyedChildren) {
-            [child emitWithEmitter:emitter];
-        }
+            yaml_document_start_event_initialize(&event, 
+                                                 NULL, 
+                                                 NULL, 
+                                                 NULL,
+                                                 1);
+            yaml_emitter_emit(emitter, &event);
 
-        yaml_document_end_event_initialize(&event, 1);
-        yaml_emitter_emit(emitter, &event);
-        //yaml_event_delete(&event);
+            [child emitWithEmitter:emitter];
+
+            yaml_document_end_event_initialize(&event, 1);
+            yaml_emitter_emit(emitter, &event);
+        }
     }
 }
 

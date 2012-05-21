@@ -59,6 +59,7 @@
 		7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingObject.m; sourceTree = "<group>"; };
 		7D2A847B1566956400E914ED /* YACYAMLArchivingExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLArchivingExtensions.h; sourceTree = "<group>"; };
 		7D2A847C1566956400E914ED /* YACYAMLArchivingExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingExtensions.m; sourceTree = "<group>"; };
+		7D69F93415696A130080741C /* TODO.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODO.txt; sourceTree = "<group>"; };
 		7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedArchiver_Package.h; sourceTree = "<group>"; };
 		7DDC030E156541F8001832F5 /* libYACYAML.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYACYAML.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DDC0311156541F8001832F5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -186,6 +187,7 @@
 		7DDC0303156541F8001832F5 = {
 			isa = PBXGroup;
 			children = (
+				7D69F93415696A130080741C /* TODO.txt */,
 				7D2A83F61565461E00E914ED /* config.h */,
 				7DE3E3B815654441006663D2 /* libYAML */,
 				7DDC0313156541F8001832F5 /* YACYAML */,

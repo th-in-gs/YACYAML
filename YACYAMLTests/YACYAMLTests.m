@@ -12,6 +12,10 @@
 
 #import <YACYAML/YACYAMLKeyedArchiver.h>
 
+@interface YACYAMLKeyedArchiver (testing)
+- (NSString *)generateAnchor;
+@end
+
 @implementation YACYAMLTests
 
 - (void)setUp
@@ -41,12 +45,8 @@
     BOOL sawError = NO;
     BOOL done = NO;
     while(!done) {
-        // Get the next event.
         if(yaml_parser_parse(&parser, &event)) {
-            /* Are we finished? */
             done = (event.type == YAML_STREAM_END_EVENT);
-            
-            /* The application is responsible for destroying the event object. */
             yaml_event_delete(&event);
         } else {
             sawError = YES;
@@ -61,7 +61,7 @@
 
 - (void)testSimpleArrayArchiving
 {
-    NSArray *testArray = [NSArray arrayWithObjects:@"one", @"two", @"three", nil];
+    NSArray *testArray = [NSArray arrayWithObjects:@"one", @"two", @"three with a space and a colon:", nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
@@ -88,5 +88,64 @@
 }
 
 
+- (void)testAnchorGeneration
+{
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:nil];
+    
+    STAssertEqualObjects(@"a", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"b", [archiver generateAnchor], nil);
+    
+    for(int i = 0; i < 24; ++i) {
+        [archiver generateAnchor];
+    }
+    
+    STAssertEqualObjects(@"A", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"B", [archiver generateAnchor], nil);
+
+    for(int i = 0; i < 24; ++i) {
+        [archiver generateAnchor];
+    }
+
+    STAssertEqualObjects(@"aa", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"ab", [archiver generateAnchor], nil);
+
+    for(int i = 0; i < 24; ++i) {
+        [archiver generateAnchor];
+    }
+    
+    STAssertEqualObjects(@"aA", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"aB", [archiver generateAnchor], nil);
+
+    
+    for(int i = 0; i < 24; ++i) {
+        [archiver generateAnchor];
+    }
+    
+    STAssertEqualObjects(@"ba", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"bb", [archiver generateAnchor], nil);
+
+    for(int i = 0; i < 24; ++i) {
+        [archiver generateAnchor];
+    }
+    
+    STAssertEqualObjects(@"bA", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"bB", [archiver generateAnchor], nil);
+    
+    for(int j = 0; j < 52; ++j) {
+        [archiver generateAnchor];
+    }
+    
+    STAssertEqualObjects(@"cC", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"cD", [archiver generateAnchor], nil);
+        
+    for(int i = 0; i < 52; ++i) {
+        for(int j = 0; j < 52; ++j) {
+            [archiver generateAnchor];
+        }
+    }
+
+    STAssertEqualObjects(@"adE", [archiver generateAnchor], nil);
+    STAssertEqualObjects(@"adF", [archiver generateAnchor], nil);
+}
 
 @end
