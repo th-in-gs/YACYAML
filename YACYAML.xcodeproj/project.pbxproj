@@ -12,6 +12,7 @@
 		7D2A83FE1566672600E914ED /* YACYAMLArchivingObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */; };
 		7D2A847D1566956400E914ED /* YACYAMLArchivingExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D2A847B1566956400E914ED /* YACYAMLArchivingExtensions.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7D2A847E1566956400E914ED /* YACYAMLArchivingExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D2A847C1566956400E914ED /* YACYAMLArchivingExtensions.m */; };
+		7D63EEE0156D8EF700F030FD /* libresolv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D63EEDF156D8EF700F030FD /* libresolv.dylib */; };
 		7D9D55CE1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */; };
 		7D9D55CF1566FB1700CBA9B1 /* YACYAMLKeyedArchiver.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DDC0316156541F8001832F5 /* YACYAMLKeyedArchiver.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7DDC0312156541F8001832F5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DDC0311156541F8001832F5 /* Foundation.framework */; };
@@ -59,6 +60,7 @@
 		7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingObject.m; sourceTree = "<group>"; };
 		7D2A847B1566956400E914ED /* YACYAMLArchivingExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLArchivingExtensions.h; sourceTree = "<group>"; };
 		7D2A847C1566956400E914ED /* YACYAMLArchivingExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingExtensions.m; sourceTree = "<group>"; };
+		7D63EEDF156D8EF700F030FD /* libresolv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libresolv.dylib; path = usr/lib/libresolv.dylib; sourceTree = SDKROOT; };
 		7D69F93415696A130080741C /* TODO.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODO.txt; sourceTree = "<group>"; };
 		7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedArchiver_Package.h; sourceTree = "<group>"; };
 		7DDC030E156541F8001832F5 /* libYACYAML.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYACYAML.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -166,6 +168,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7D63EEE0156D8EF700F030FD /* libresolv.dylib in Frameworks */,
 				7DDC0320156541F8001832F5 /* SenTestingKit.framework in Frameworks */,
 				7DDC0322156541F8001832F5 /* UIKit.framework in Frameworks */,
 				7DDC0323156541F8001832F5 /* Foundation.framework in Frameworks */,
@@ -211,6 +214,7 @@
 			isa = PBXGroup;
 			children = (
 				7DDC0311156541F8001832F5 /* Foundation.framework */,
+				7D63EEDF156D8EF700F030FD /* libresolv.dylib */,
 				7DDC031F156541F8001832F5 /* SenTestingKit.framework */,
 				7DDC0321156541F8001832F5 /* UIKit.framework */,
 			);

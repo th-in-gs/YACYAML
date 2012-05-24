@@ -8,11 +8,23 @@
 
 #import "YACYAMLKeyedArchiver.h"
 
+
 @interface NSObject (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
 @end
+
 
 @interface NSString (YACYAMLArchivingExtensions) <YACYAMLArchivingScalar>
 @end
 
 @interface NSNumber (YACYAMLArchivingExtensions) <YACYAMLArchivingScalar>
+@end
+
+
+@interface NSArray (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
+@end
+
+@interface NSDictionary (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
+@end
+
+@interface NSData (YACYAMLArchivingExtensions) <YACYAMLArchivingScalar>
 @end

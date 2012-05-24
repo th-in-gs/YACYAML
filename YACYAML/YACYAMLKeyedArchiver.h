@@ -46,13 +46,17 @@ typedef enum YACYAMLKeyedArchiverOptions {
 
 @end
 
-@protocol YACYAMLArchivingScalar <NSObject>
+@protocol YACYAMLArchivingScalar
 
 - (NSString*)YACYAMLScalarString; 
 
 @end
 
-@protocol YACYAMLArchivingCustomEncoding <NSObject>
+@protocol YACYAMLArchivingCustomEncoding
+
+@property (nonatomic, assign, readonly) BOOL YACYAMLTagCanBePlainImplicit;
+@property (nonatomic, assign, readonly) BOOL YACYAMLTagCanBeQuotedImplicit;
+@property (nonatomic, weak, readonly) NSString *YACYAMLTag;
 
 - (void)YACYAMLEncodeWithCoder:(YACYAMLKeyedArchiver *)coder;
 

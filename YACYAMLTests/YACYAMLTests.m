@@ -8,6 +8,8 @@
 
 #import "YACYAMLTests.h"
 
+#import <UIKit/UIKit.h>
+
 #import <libYAML/yaml.h>
 
 #import <YACYAML/YACYAMLKeyedArchiver.h>
@@ -59,6 +61,108 @@
     STAssertFalse(sawError, nil);
 }
 
+- (void)testFloatScalarArchiving
+{
+    NSArray *testArray = [NSArray arrayWithObjects:
+                          [NSNumber numberWithFloat:(float)M_PI], 
+                          [NSNumber numberWithDouble:M_PI], 
+                          [NSNumber numberWithFloat:MAXFLOAT], 
+                          [NSNumber numberWithDouble:INFINITY], 
+                          nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+- (void)testIntegerScalarArchiving
+{
+    NSArray *testArray = [NSArray arrayWithObjects:
+                          [NSNumber numberWithChar:CHAR_MAX], 
+                          [NSNumber numberWithChar:CHAR_MIN], 
+                          [NSNumber numberWithUnsignedChar:UCHAR_MAX], 
+                          [NSNumber numberWithUnsignedChar:0], 
+                          [NSNumber numberWithShort:SHRT_MAX], 
+                          [NSNumber numberWithShort:SHRT_MIN], 
+                          [NSNumber numberWithUnsignedShort:USHRT_MAX], 
+                          [NSNumber numberWithUnsignedShort:0], 
+                          [NSNumber numberWithInt:INT_MAX], 
+                          [NSNumber numberWithInt:INT_MIN], 
+                          [NSNumber numberWithUnsignedInt:UINT_MAX], 
+                          [NSNumber numberWithUnsignedInt:0], 
+                          [NSNumber numberWithInteger:NSIntegerMax], 
+                          [NSNumber numberWithInteger:NSIntegerMin], 
+                          [NSNumber numberWithLong:LONG_MAX], 
+                          [NSNumber numberWithLong:LONG_MIN], 
+                          [NSNumber numberWithUnsignedLong:ULONG_MAX], 
+                          [NSNumber numberWithUnsignedLong:0],
+                          [NSNumber numberWithUnsignedInteger:NSUIntegerMax], 
+                          [NSNumber numberWithUnsignedInteger:0],
+                          nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+- (void)testBooleanArchiving
+{
+    NSArray *testArray = [NSArray arrayWithObjects:
+                          [NSNumber numberWithBool:YES],
+                          [NSNumber numberWithBool:NO],
+                          nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+
+- (void)testDataArchiving
+{
+    char bytes[] = "1234567890";
+    
+    NSArray *testArray = [NSArray arrayWithObjects:
+                          [NSData dataWithBytesNoCopy:bytes length:sizeof(bytes) freeWhenDone:NO],
+                          nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+
+- (void)testNullArchiving
+{
+    NSArray *testArray = [NSArray arrayWithObjects:@"one", [NSNull null], @"two", [NSNull null], nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+
+- (void)testSetArchiving
+{
+    NSArray *testArray = [NSSet setWithObjects:@"one", @"two",  @"three", @"four", @"two", nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+
+- (void)testEmptyString
+{
+    NSArray *testArray = [NSArray arrayWithObjects:@"one", @"",  @"", @"three", @"four", nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+
+
 - (void)testSimpleArrayArchiving
 {
     NSArray *testArray = [NSArray arrayWithObjects:@"one", @"two", @"three with a space and a colon:", nil];
@@ -83,6 +187,18 @@
                                     nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
+    
+    STAssertTrue(data.length != 0, nil);
+}
+
+
+- (void)testUIButton
+{
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, 320, 480)];
+    view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    view.backgroundColor = [UIColor redColor];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:view];
     
     STAssertTrue(data.length != 0, nil);
 }

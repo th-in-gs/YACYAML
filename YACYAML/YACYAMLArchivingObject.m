@@ -12,6 +12,7 @@
 #import "YACYAMLKeyedArchiver_Package.h"
 
 #import "YACYAMLArchivingObject.h"
+#import "YACYAMLArchivingExtensions.h"
 
 @interface YACYAMLArchivingObject ()
 @property (nonatomic, assign) BOOL needsAnchor;
@@ -109,20 +110,42 @@
                 anchor = (yaml_char_t *)_emittedAnchor.UTF8String;
             }
             
+            NSString *customTag = [obj YACYAMLTag];
+            
             if([obj respondsToSelector:@selector(YACYAMLScalarString)]) {
                 // This is a scalar object.  Emit it.
                 NSString *string = [(id<YACYAMLArchivingScalar>)obj YACYAMLScalarString];
                             
-                const char *stringChars = [string UTF8String];
+                const char *stringChars;
+                int stringCharsLength;
+                yaml_scalar_style_t style;
+
+                // The below deals with the difference between an empty
+                // string, and a nill string.
+                if(string) {
+                    stringChars = [string UTF8String];
+                    stringCharsLength = strlen(stringChars);
+                    if(stringCharsLength) {
+                        style = YAML_ANY_SCALAR_STYLE;
+                    } else {
+                        style = YAML_SINGLE_QUOTED_SCALAR_STYLE;
+                    }
+                } else {
+                    stringChars = "";
+                    stringCharsLength = 0;
+                    style = YAML_PLAIN_SCALAR_STYLE;
+                }
                 
                 yaml_scalar_event_initialize(&event,
                                              anchor,
-                                             (yaml_char_t *)YAML_STR_TAG, 
+                                             customTag ? (yaml_char_t *) 
+                                                (yaml_char_t *)customTag.UTF8String : 
+                                                (yaml_char_t *)YAML_STR_TAG, 
                                              (yaml_char_t *)stringChars,
-                                             strlen(stringChars),
-                                             1,
-                                             1,
-                                             YAML_ANY_SCALAR_STYLE);
+                                             stringCharsLength,
+                                             [obj YACYAMLTagCanBePlainImplicit],
+                                             [obj YACYAMLTagCanBeQuotedImplicit],
+                                             style);
                 yaml_emitter_emit(emitter, &event);
             } else {
                 // This is an obect with children.
@@ -131,8 +154,10 @@
                     // represent it.
                     yaml_mapping_start_event_initialize(&event, 
                                                         anchor,
-                                                        (yaml_char_t *)YAML_MAP_TAG, 
-                                                        1, 
+                                                        customTag ? 
+                                                            (yaml_char_t *)customTag.UTF8String :
+                                                            (yaml_char_t *)YAML_MAP_TAG, 
+                                                        [obj YACYAMLTagCanBePlainImplicit], 
                                                         YAML_ANY_MAPPING_STYLE);
                     yaml_emitter_emit(emitter, &event);
                     
@@ -159,9 +184,15 @@
                     // non-scalar object with no children is represented as an
                     // empty sequence.
                     yaml_sequence_start_event_initialize(&event,
-                                                         _keyedChildren ? NULL : anchor,
-                                                         (yaml_char_t *)YAML_SEQ_TAG,
-                                                         1, 
+                                                         _keyedChildren ? 
+                                                            NULL : 
+                                                            anchor,
+                                                         (!_keyedChildren && customTag) ? 
+                                                            (yaml_char_t *)customTag.UTF8String : 
+                                                            (yaml_char_t *)YAML_SEQ_TAG,
+                                                         _keyedChildren ?
+                                                             1 :
+                                                             [obj YACYAMLTagCanBePlainImplicit], 
                                                          YAML_ANY_SEQUENCE_STYLE);
                     yaml_emitter_emit(emitter, &event);
                     
