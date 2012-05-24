@@ -241,7 +241,6 @@
 @end
 
 
-
 @implementation NSSet (YACYAMLArchivingExtensions) 
 
 - (BOOL)YACYAMLTagCanBePlainImplicit

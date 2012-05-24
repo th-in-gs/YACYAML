@@ -1,5 +1,5 @@
 //
-//  YACYAML.h
+//  YACYAMLKeyedArchiver.h
 //  YACYAML
 //
 //  Created by James Montgomerie on 17/05/2012.

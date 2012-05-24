@@ -35,6 +35,9 @@
 		7DE3E41B15654441006663D2 /* writer.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DE3E3D015654441006663D2 /* writer.c */; };
 		7DE3E41C15654441006663D2 /* yaml_private.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DE3E3D115654441006663D2 /* yaml_private.h */; };
 		7DE3E42B15654561006663D2 /* libYAML.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE3E3AC15654430006663D2 /* libYAML.a */; };
+		7DE66F30156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DE66F2E156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		7DE66F31156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DE66F2F156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.m */; };
+		7DE66F34156E8C530016E676 /* YACYAML.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DE66F33156E8C530016E676 /* YACYAML.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +155,9 @@
 		7DE3E40D15654441006663D2 /* yaml.vcproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = yaml.vcproj; sourceTree = "<group>"; };
 		7DE3E40E15654441006663D2 /* yamldll.vcproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = yamldll.vcproj; sourceTree = "<group>"; };
 		7DE3E40F15654441006663D2 /* yaml-0.1.pc.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "yaml-0.1.pc.in"; sourceTree = "<group>"; };
+		7DE66F2E156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedUnarchiver.h; sourceTree = "<group>"; };
+		7DE66F2F156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLKeyedUnarchiver.m; sourceTree = "<group>"; };
+		7DE66F33156E8C530016E676 /* YACYAML.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAML.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -224,9 +230,12 @@
 		7DDC0313156541F8001832F5 /* YACYAML */ = {
 			isa = PBXGroup;
 			children = (
+				7DE66F33156E8C530016E676 /* YACYAML.h */,
 				7DDC0316156541F8001832F5 /* YACYAMLKeyedArchiver.h */,
 				7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */,
 				7DDC0317156541F8001832F5 /* YACYAMLKeyedArchiver.m */,
+				7DE66F2E156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.h */,
+				7DE66F2F156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.m */,
 				7D2A83FB1566672600E914ED /* YACYAMLArchivingObject.h */,
 				7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */,
 				7D2A847B1566956400E914ED /* YACYAMLArchivingExtensions.h */,
@@ -421,6 +430,8 @@
 				7D2A847D1566956400E914ED /* YACYAMLArchivingExtensions.h in Headers */,
 				7D9D55CE1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h in Headers */,
 				7D9D55CF1566FB1700CBA9B1 /* YACYAMLKeyedArchiver.h in Headers */,
+				7DE66F30156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.h in Headers */,
+				7DE66F34156E8C530016E676 /* YACYAML.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -554,6 +565,7 @@
 				7DDC0318156541F8001832F5 /* YACYAMLKeyedArchiver.m in Sources */,
 				7D2A83FE1566672600E914ED /* YACYAMLArchivingObject.m in Sources */,
 				7D2A847E1566956400E914ED /* YACYAMLArchivingExtensions.m in Sources */,
+				7DE66F31156E8C3D0016E676 /* YACYAMLKeyedUnarchiver.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -12,7 +12,7 @@
 
 #import <libYAML/yaml.h>
 
-#import <YACYAML/YACYAMLKeyedArchiver.h>
+#import <YACYAML/YACYAML.h>
 
 @interface YACYAMLKeyedArchiver (testing)
 - (NSString *)generateAnchor;

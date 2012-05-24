@@ -1,5 +1,5 @@
 //
-//  YACYAML.m
+//  YACYAMLKeyedArchiver.m
 //  YACYAML
 //
 //  Created by James Montgomerie on 17/05/2012.
