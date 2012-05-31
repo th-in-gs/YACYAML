@@ -17,17 +17,17 @@
     [(id<NSCoding>)self encodeWithCoder:coder];
 }
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return NO;
 }
 
-- (BOOL)YACYAMLTagCanBeQuotedImplicit
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
 {
     return NO;
 }
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
     return [@"!" stringByAppendingString:NSStringFromClass([self class])];
 }
@@ -37,19 +37,19 @@
 
 @implementation NSString (YACYAMLArchivingExtensions)
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return YES;
 }
 
-- (BOOL)YACYAMLTagCanBeQuotedImplicit
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
 {
     return YES;
 }
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
-    return @"tag:yaml.org,2002:str";
+    return nil;
 }
 
 - (NSString *)YACYAMLScalarString
@@ -63,9 +63,14 @@
 
 @implementation NSNumber (YACYAMLArchivingExtensions)
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return YES;
+}
+
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
+{
+    return NO;
 }
 
 - (BOOL)YACYAMLArchivingExtensions_isBoolean
@@ -93,7 +98,7 @@
     return NO;
 }
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
     NSString *tag = nil;
 
@@ -147,6 +152,12 @@
 {
     if([self YACYAMLArchivingExtensions_isBoolean]) {
         return self.boolValue ? @"y" : @"n";
+    } if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberPositiveInfinity]) {
+            return @".inf";
+    } else if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberNegativeInfinity]) {
+        return @"-.inf";
+    } else if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberNaN]) {
+        return @".nan";
     } else {
         return [self stringValue];
     }
@@ -158,17 +169,17 @@
 
 @implementation NSArray (YACYAMLArchivingExtensions) 
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return YES;
 }
 
-- (BOOL)YACYAMLTagCanBeQuotedImplicit
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
 {
-    return YES;
+    return NO;
 }
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
     return @"tag:yaml.org,2002:seq";
 }
@@ -186,17 +197,17 @@
 
 @implementation NSDictionary (YACYAMLArchivingExtensions) 
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return YES;
 }
 
-- (BOOL)YACYAMLTagCanBeQuotedImplicit
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
 {
-    return YES;
+    return NO;
 }
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
     return @"tag:yaml.org,2002:map";
 }
@@ -218,17 +229,17 @@
 
 @implementation NSNull (YACYAMLArchivingExtensions)
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
     return @"tag:yaml.org,2002:NULL";
 }
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return YES;
 }
 
-- (BOOL)YACYAMLTagCanBeQuotedImplicit
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
 {
     return YES;
 }
@@ -243,17 +254,17 @@
 
 @implementation NSSet (YACYAMLArchivingExtensions) 
 
-- (BOOL)YACYAMLTagCanBePlainImplicit
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
 {
     return NO;
 }
 
-- (BOOL)YACYAMLTagCanBeQuotedImplicit
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
 {
     return NO;
 }
 
-- (NSString *)YACYAMLTag
+- (NSString *)YACYAMLArchivingTag
 {
     return @"tag:yaml.org,2002:set";
 }
@@ -272,7 +283,17 @@
 
 @implementation NSData (YACYAMLArchivingExtensions)
 
-- (NSString *)YACYAMLTag
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
+{
+    return NO;
+}
+
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
+{
+    return NO;
+}
+
+- (NSString *)YACYAMLArchivingTag
 {
     return @"tag:yaml.org,2002:binary";
 }

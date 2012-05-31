@@ -13,10 +13,10 @@
 @end
 
 
-@interface NSString (YACYAMLArchivingExtensions) <YACYAMLArchivingScalar>
+@interface NSString (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding, YACYAMLArchivingScalar>
 @end
 
-@interface NSNumber (YACYAMLArchivingExtensions) <YACYAMLArchivingScalar>
+@interface NSNumber (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding, YACYAMLArchivingScalar>
 @end
 
 
@@ -26,5 +26,12 @@
 @interface NSDictionary (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
 @end
 
-@interface NSData (YACYAMLArchivingExtensions) <YACYAMLArchivingScalar>
+@interface NSNull (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
+@end
+
+@interface NSSet (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
+@end
+
+
+@interface NSData (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding, YACYAMLArchivingScalar>
 @end

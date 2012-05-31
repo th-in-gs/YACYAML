@@ -14,6 +14,8 @@
 
 #import <YACYAML/YACYAML.h>
 
+#import <math.h>
+
 @interface YACYAMLKeyedArchiver (testing)
 - (NSString *)generateAnchor;
 @end
@@ -68,11 +70,29 @@
                           [NSNumber numberWithDouble:M_PI], 
                           [NSNumber numberWithFloat:MAXFLOAT], 
                           [NSNumber numberWithDouble:INFINITY], 
+                          [NSNumber numberWithDouble:-INFINITY], 
+                          [NSNumber numberWithDouble:NAN], 
+                          (__bridge NSNumber *)kCFNumberPositiveInfinity, 
+                          (__bridge NSNumber *)kCFNumberNegativeInfinity, 
+                          (__bridge NSNumber *)kCFNumberNaN, 
                           nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    // A strict isEqual between the test array and the unarchived array doesn't
+    // return YES, because the floats can't round-trip through ASCII properly
+    // fully.
+    // We also lose some type information, because YAML doesn't explicitly
+    // encode e.g. float vs. double.
+    // Nevertheless, the values are good enough for use, as a comparison of
+    // their string represenatation will show.
+    //STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    STAssertTrue([[unarchivedArray valueForKey:@"stringValue"]
+                                       isEqual:[testArray valueForKey:@"stringValue"]], nil);
 }
 
 - (void)testIntegerScalarArchiving
@@ -103,6 +123,10 @@
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 - (void)testBooleanArchiving
@@ -115,12 +139,21 @@
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 
 - (void)testDataArchiving
 {
-    char bytes[] = "1234567890";
+    char bytes[] = 
+        "123456789012345678901234567890123456789012345678901234567890"
+        "123456789012345678901234567890123456789012345678901234567890"
+        "123456789012345678901234567890123456789012345678901234567890"
+        "123456789012345678901234567890123456789012345678901234567890"
+        "123456789012345678901234567890123456789012345678901234567890";
     
     NSArray *testArray = [NSArray arrayWithObjects:
                           [NSData dataWithBytesNoCopy:bytes length:sizeof(bytes) freeWhenDone:NO],
@@ -129,6 +162,10 @@
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 
@@ -139,12 +176,16 @@
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 
 - (void)testSetArchiving
 {
-    NSArray *testArray = [NSSet setWithObjects:@"one", @"two",  @"three", @"four", @"two", nil];
+    NSArray *testArray = [NSSet setWithObjects:@"one", @"two", @"three", @"four", @"two", nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
@@ -154,11 +195,15 @@
 
 - (void)testEmptyString
 {
-    NSArray *testArray = [NSArray arrayWithObjects:@"one", @"",  @"", @"three", @"four", nil];
+    NSArray *testArray = [NSArray arrayWithObjects:@"one", @"", @"", @"three", @"four", nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 
@@ -170,6 +215,10 @@
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
     STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 - (void)testSimpleDictionaryArchiving
@@ -189,18 +238,88 @@
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
     
     STAssertTrue(data.length != 0, nil);
+        
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedDictionary isEqual:testDictionary], nil);
+}
+
+- (void)testStringsVsScalars
+{
+    NSArray *testArray = [NSArray arrayWithObjects:
+                          @"1", 
+                          [NSNumber numberWithInt:1],
+                          @"y",
+                          @"true",
+                          [NSNumber numberWithBool:YES],
+                          nil];
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    
+    STAssertTrue(data.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([unarchivedArray isEqual:testArray], nil);
 }
 
 
-- (void)testUIButton
+- (void)testNSArchiverChars
 {
-    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, 320, 480)];
+    NSMutableData *data = [NSMutableData data];
+    
+    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:data];
+    
+    char *string = "hello world";
+    [archiver encodeValueOfObjCType:"*" at:&string];
+     
+    [archiver finishEncoding];
+    
+     STAssertTrue(data.length != 0, nil);
+     
+    NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
+    
+    char *newString = nil;
+    [unarchiver decodeValueOfObjCType:"*" at:&newString];
+    
+    STAssertTrue(strcmp(string, newString) == 0, nil);
+}
+
+
+- (void)testChars
+{
+    NSMutableData *data = [NSMutableData data];
+    
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:data];
+    
+    char *string = "hello world";
+    [archiver encodeValueOfObjCType:"*" at:&string];
+    
+    [archiver finishEncoding];
+    
+    STAssertTrue(data.length != 0, nil);
+    
+    YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:data];
+    
+    char *newString = nil;
+    [unarchiver decodeValueOfObjCType:"*" at:&newString];
+    
+    STAssertTrue(strcmp(string, newString) == 0, nil);
+}
+
+- (void)testUIView
+{
+    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 480)];
     view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     view.backgroundColor = [UIColor redColor];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:view];
     
     STAssertTrue(data.length != 0, nil);
+    
+    UIView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    STAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], nil);
 }
 
 
@@ -262,6 +381,125 @@
 
     STAssertEqualObjects(@"adE", [archiver generateAnchor], nil);
     STAssertEqualObjects(@"adF", [archiver generateAnchor], nil);
+}
+
+- (void)testPositiveIntegerParsing
+{
+    NSString *integersYAML = 
+        @"canonical: 685230\n"
+        @"decimal: 685_230\n"
+        @"octal: 02472256\n"
+        @"hexadecimal: 0x_0A_74_AE\n"
+        @"binary: 0b1010_0111_0100_1010_1110\n"
+        @"sexagesimal: 190:20:30\n"
+        @"canonicalPlus: +685230\n"
+        @"decimalPlus: +685_230\n"
+        @"octalPlus: +02472256\n"
+        @"hexadecimalPlus: +0x_0A_74_AE\n"
+        @"binaryPlus: +0b1010_0111_0100_1010_1110\n"
+        @"sexagesimalPlus: +190:20:30\n";
+    
+    NSArray *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:integersYAML];
+    
+    for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
+        STAssertEquals(685230, [number integerValue], NULL);
+    }
+}
+
+- (void)testNegativeIntegerParsing
+{
+    NSString *integersYAML = 
+        @"canonical: -685230\n"
+        @"decimal: -685_230\n"
+        @"octal: -02472256\n"
+        @"hexadecimal: -0x_0A_74_AE\n"
+        @"binary: -0b1010_0111_0100_1010_1110\n"
+        @"sexagesimal: -190:20:30\n";
+    
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:integersYAML];
+    
+    for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
+        STAssertEquals(-685230, [number integerValue], NULL);
+    }
+}
+
+- (void)testPositiveFloatParsing
+{
+    NSString *floatsYAML = 
+        @"canonical: 6.8523015e+5"
+        @"exponentioal: 685.230_15e+03"
+        @"fixed: 685_230.15"
+        @"sexagesimal: 190:20:30.15";
+
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:floatsYAML];
+    
+    for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
+        STAssertEquals(685230.15, [number doubleValue], NULL);
+    }
+}
+
+- (void)testNegativePositiveFloatParsing
+{
+    NSString *floatsYAML = 
+        @"canonical: -6.8523015e+5"
+        @"exponentioal: -685.230_15e+03"
+        @"fixed: -685_230.15"
+        @"sexagesimal: -190:20:30.15";
+    
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:floatsYAML];
+    
+    for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
+        STAssertEquals(-685230.15, [number doubleValue], NULL);
+    }
+}
+
+- (void)testSpecialFloatParsing
+{
+    NSString *floatsYAML = 
+        @"infinity: .INF\n"
+        @"positive infinity: +.INF\n"
+        @"negative infinity: -.inf\n"
+        @"not a number: .NaN\n";
+    
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:floatsYAML];
+
+    STAssertTrue(isinf([[unarchivedDictionary objectForKey:@"infinity"] doubleValue]), nil);
+    STAssertTrue([[unarchivedDictionary objectForKey:@"infinity"] doubleValue] > 0, nil);
+    STAssertFalse([[unarchivedDictionary objectForKey:@"infinity"] doubleValue] < 0, nil);
+    
+    STAssertTrue(isinf([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue]), nil);
+    STAssertTrue([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue] > 0, nil);
+    STAssertFalse([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue] < 0, nil);
+
+    STAssertTrue(isinf([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue]), nil);
+    STAssertTrue([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue] < 0, nil);
+    STAssertFalse([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue] > 0, nil);
+
+    STAssertTrue(isnan([[unarchivedDictionary objectForKey:@"not a number"] doubleValue]), nil);
+}
+
+- (void)testBinaryParsing
+{
+    NSString *binaryYAML = 
+        @"canonical: !!binary \"\\\n"
+        @" R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5\\\n"
+        @" OTk6enp56enmlpaWNjY6Ojo4SEhP/++f/++f/++f/++f/++f/++f/++f/++f/+\\\n"
+        @" +f/++f/++f/++f/++f/++SH+Dk1hZGUgd2l0aCBHSU1QACwAAAAADAAMAAAFLC\\\n"
+        @" AgjoEwnuNAFOhpEMTRiggcz4BNJHrv/zCFcLiwMWYNG84BwwEeECcgggoBADs=\"\n"
+        @"generic: !!binary |\n"
+        @" R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5\n"
+        @" OTk6enp56enmlpaWNjY6Ojo4SEhP/++f/++f/++f/++f/++f/++f/++f/++f/+\n"
+        @" +f/++f/++f/++f/++f/++SH+Dk1hZGUgd2l0aCBHSU1QACwAAAAADAAMAAAFLC\n"
+        @" AgjoEwnuNAFOhpEMTRiggcz4BNJHrv/zCFcLiwMWYNG84BwwEeECcgggoBADs=\n"
+        @"description:\n"
+        @" The binary value above is a tiny arrow encoded as a gif image.\n";
+    
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:binaryYAML];
+
+    STAssertTrue([[unarchivedDictionary objectForKey:@"canonical"] isEqual:[unarchivedDictionary objectForKey:@"generic"]], nil);
+
+    STAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"canonical"]], nil);
+    STAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"generic"]], nil);
 }
 
 @end

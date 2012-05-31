@@ -8,8 +8,12 @@
 
 #import <libYAML/yaml.h>
 
+#import "YACYAML_Package.h"
+
 #import "YACYAMLKeyedArchiver.h"
 #import "YACYAMLKeyedArchiver_Package.h"
+#import "YACYAMLKeyedUnarchiver.h"
+#import "YACYAMLKeyedUnarchiver_Package.h"
 
 #import "YACYAMLArchivingObject.h"
 #import "YACYAMLArchivingExtensions.h"
@@ -110,7 +114,7 @@
                 anchor = (yaml_char_t *)_emittedAnchor.UTF8String;
             }
             
-            NSString *customTag = [obj YACYAMLTag];
+            NSString *customTag = [obj YACYAMLArchivingTag];
             
             if([obj respondsToSelector:@selector(YACYAMLScalarString)]) {
                 // This is a scalar object.  Emit it.
@@ -121,16 +125,25 @@
                 yaml_scalar_style_t style;
 
                 // The below deals with the difference between an empty
-                // string, and a nill string.
+                // string and NULL.
                 if(string) {
+                    // This is non-NULL.
                     stringChars = [string UTF8String];
                     stringCharsLength = strlen(stringChars);
                     if(stringCharsLength) {
-                        style = YAML_ANY_SCALAR_STYLE;
+                        if(!customTag &&
+                           [YACYAMLKeyedUnarchiver classForYAMLScalarString:string]) {
+                            // If this is a string that would be implicitly decoded 
+                            // into another type, we need to quote it.
+                            style = YAML_SINGLE_QUOTED_SCALAR_STYLE;
+                        } else {
+                            style = YAML_ANY_SCALAR_STYLE;
+                        }
                     } else {
                         style = YAML_SINGLE_QUOTED_SCALAR_STYLE;
                     }
                 } else {
+                    // This is a NULL.
                     stringChars = "";
                     stringCharsLength = 0;
                     style = YAML_PLAIN_SCALAR_STYLE;
@@ -143,8 +156,8 @@
                                                 (yaml_char_t *)YAML_STR_TAG, 
                                              (yaml_char_t *)stringChars,
                                              stringCharsLength,
-                                             [obj YACYAMLTagCanBePlainImplicit],
-                                             [obj YACYAMLTagCanBeQuotedImplicit],
+                                             [obj YACYAMLArchivingTagCanBePlainImplicit],
+                                             [obj YACYAMLArchivingTagCanBeQuotedImplicit],
                                              style);
                 yaml_emitter_emit(emitter, &event);
             } else {
@@ -157,7 +170,7 @@
                                                         customTag ? 
                                                             (yaml_char_t *)customTag.UTF8String :
                                                             (yaml_char_t *)YAML_MAP_TAG, 
-                                                        [obj YACYAMLTagCanBePlainImplicit], 
+                                                        [obj YACYAMLArchivingTagCanBePlainImplicit], 
                                                         YAML_ANY_MAPPING_STYLE);
                     yaml_emitter_emit(emitter, &event);
                     
@@ -165,12 +178,11 @@
                         // This object has keyed children /and/ unkeyed
                         // children.  Put the unkeyed children in a sequence 
                         // under a special key.
-                        static const char *key = "__unkeyedChildren";
                         yaml_scalar_event_initialize(&event,
                                                      NULL,
                                                      (yaml_char_t *)YAML_STR_TAG, 
-                                                     (yaml_char_t *)key,
-                                                     strlen(key),
+                                                     (yaml_char_t *)YACYAMLUnkeyedChildrenKeyChars,
+                                                     YACYAMLUnkeyedChildrenKeyCharsLength,
                                                      1,
                                                      1,
                                                      YAML_ANY_SCALAR_STYLE);
@@ -192,7 +204,7 @@
                                                             (yaml_char_t *)YAML_SEQ_TAG,
                                                          _keyedChildren ?
                                                              1 :
-                                                             [obj YACYAMLTagCanBePlainImplicit], 
+                                                             [obj YACYAMLArchivingTagCanBePlainImplicit], 
                                                          YAML_ANY_SEQUENCE_STYLE);
                     yaml_emitter_emit(emitter, &event);
                     

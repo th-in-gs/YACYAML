@@ -1,0 +1,16 @@
+//
+//  YACYAML_Package.m
+//  YACYAML
+//
+//  Created by James Montgomerie on 25/05/2012.
+//  Copyright (c) 2012 Things Made Out Of Other Things. All rights reserved.
+//
+
+#import "YACYAML_Package.h"
+
+#define YACYAMLUnkeyedChildrenCString "___unkeyedChildren"
+
+NSString * const YACYAMLUnkeyedChildrenKey = @YACYAMLUnkeyedChildrenCString;
+
+const yaml_char_t *YACYAMLUnkeyedChildrenKeyChars = (yaml_char_t *)YACYAMLUnkeyedChildrenCString;
+const size_t YACYAMLUnkeyedChildrenKeyCharsLength = sizeof(YACYAMLUnkeyedChildrenKeyChars) - 1;

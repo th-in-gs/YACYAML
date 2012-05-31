@@ -8,7 +8,6 @@
 
 #import <Foundation/Foundation.h>
 
-extern NSString * const YACYAMLUnsupportedTypeException;
 extern NSString * const YACYAMLUnsupportedMethodException;
 
 typedef enum YACYAMLKeyedArchiverOptions {    
@@ -54,9 +53,9 @@ typedef enum YACYAMLKeyedArchiverOptions {
 
 @protocol YACYAMLArchivingCustomEncoding
 
-@property (nonatomic, assign, readonly) BOOL YACYAMLTagCanBePlainImplicit;
-@property (nonatomic, assign, readonly) BOOL YACYAMLTagCanBeQuotedImplicit;
-@property (nonatomic, weak, readonly) NSString *YACYAMLTag;
+@property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBePlainImplicit;
+@property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBeQuotedImplicit;
+@property (nonatomic, weak, readonly) NSString *YACYAMLArchivingTag;
 
 - (void)YACYAMLEncodeWithCoder:(YACYAMLKeyedArchiver *)coder;
 

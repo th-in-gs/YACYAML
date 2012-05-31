@@ -101,7 +101,7 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     
     yaml_emitter_set_output(&emitter, EmitToNSMutableData, (__bridge void *)_dataForWriting);
     
-    yaml_event_t event = {};
+    yaml_event_t event;
     
     yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
     yaml_emitter_emit(&emitter, &event);
@@ -267,6 +267,9 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 			toEncode = (__bridge id)*((void **)addr);
 			break;
 		case '*': // (char *) string
+            toEncode = [NSData dataWithBytes:*(const char **)addr 
+                                      length:strlen(*(const char **)addr) + 1];
+			break;
 		case ':': // SEL
 			toEncode = NSStringFromSelector(*((SEL *)addr));
 			break;
