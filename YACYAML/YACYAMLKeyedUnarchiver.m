@@ -139,9 +139,11 @@ NSMutableArray *sPredicatesToClasses = nil;
             }
         }
     
-        // This object will represent the entire document.
-        [_unarchivingObjectStack addObject:[[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
-                                                                              forUnarchiver:self]];
+        if(self) {
+            // This object will represent the entire document.
+            [_unarchivingObjectStack addObject:[[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
+                                                                                  forUnarchiver:self]];
+        }
     }
     
     return self;
