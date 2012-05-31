@@ -86,7 +86,7 @@
         // NSNumbers created with e.g. [NSNumber numberWithBool:] report their
         // objCType as /char/.  Correct at machine level, but not correct as
         // far as human-readable-output is concerned.  The class they're stored
-        // as, however, reports ots name as '__NSCFBoolean', so we look at the 
+        // as, however, reports its name as '__NSCFBoolean', so we look at the 
         // class name.  This is a bit fragile, but the worst that will happen
         // is that if Apple renames the __NSCFBoolean class, this will start
         // reporting NO, and we'll encode as char, which is where we'd be anyway
@@ -153,7 +153,7 @@
     if([self YACYAMLArchivingExtensions_isBoolean]) {
         return self.boolValue ? @"y" : @"n";
     } if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberPositiveInfinity]) {
-            return @".inf";
+        return @".inf";
     } else if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberNegativeInfinity]) {
         return @"-.inf";
     } else if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberNaN]) {
@@ -313,8 +313,6 @@
                                      encodedBuffer, encodedBufferLength);
     
     if(encodedRealLength >= 0) {
-        // In real life, you might not want the nul-termination byte, so you 
-        // might not want the '+ 1'. 
         encodedString = [[NSString alloc] initWithBytesNoCopy:encodedBuffer
                                                        length:encodedRealLength
                                                      encoding:NSASCIIStringEncoding

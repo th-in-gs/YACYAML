@@ -27,7 +27,7 @@ NSMutableArray *sPredicatesToClasses = nil;
 @implementation YACYAMLKeyedUnarchiver {
     NSData *_archivedData;
     yaml_parser_t _parser;
-    CFMutableDictionaryRef _anchoredObjects;
+    NSMutableDictionary *_anchoredObjects;
     NSMutableArray *_unarchivingObjectStack;
     
     BOOL _initWithCoderDisallowed;
@@ -100,20 +100,10 @@ NSMutableArray *sPredicatesToClasses = nil;
         _initWithCoderDisallowed = (options & YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder) == YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder;
         
         _archivedData = data;
-        
+
+        _anchoredObjects = [[NSMutableDictionary alloc] init];
+
         _unarchivingObjectStack = [[NSMutableArray alloc] init];
-        
-        // Create a dictionary that won't retain its objects.
-        _anchoredObjects = CFDictionaryCreateMutable(kCFAllocatorDefault,
-                                                     0,
-                                                     &kCFTypeDictionaryKeyCallBacks,
-                                                     &(const CFDictionaryValueCallBacks) {
-                                                         0,
-                                                         NULL,
-                                                         NULL,
-                                                         kCFTypeDictionaryValueCallBacks.copyDescription,
-                                                         NULL
-                                                     });
         
         yaml_parser_initialize(&_parser);
         
@@ -178,12 +168,12 @@ NSMutableArray *sPredicatesToClasses = nil;
 - (void)setUnrchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
                   forAnchor:(NSString *)anchor
 {
-    CFDictionarySetValue(_anchoredObjects, (__bridge void *)anchor, (__bridge void *)unarchivingObject);
+    [_anchoredObjects setObject:unarchivingObject forKey:anchor];
 }
 
 - (YACYAMLUnarchivingObject *)previouslyInstantiatedUnarchivingObjectForAnchor:(NSString *)anchor
 {
-    return (__bridge YACYAMLUnarchivingObject *)CFDictionaryGetValue(_anchoredObjects, (__bridge void *)anchor);
+    return [_anchoredObjects valueForKey:anchor];
 }
 
 - (void)pushUnarchivingObject:(YACYAMLUnarchivingObject *)archivingObject
@@ -223,10 +213,10 @@ NSMutableArray *sPredicatesToClasses = nil;
     pthread_mutex_lock(&sPredicatesToClassesMutex);
     {
         NSUInteger count = sPredicatesToClasses.count;
-        for(int i = 0; i < count; i +=2) {
+        for(int i = 0; i < count; i += 2) {
             NSPredicate *predicate = [sPredicatesToClasses objectAtIndex:i];
             if([predicate evaluateWithObject:scalarString]) {
-                ret =[sPredicatesToClasses objectAtIndex:i + 1];
+                ret = [sPredicatesToClasses objectAtIndex:i + 1];
                 break;
             }
         }
