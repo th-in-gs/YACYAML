@@ -278,6 +278,11 @@ NSMutableArray *sPredicatesToClasses = nil;
     return [[self decodeObjectForKey:key] doubleValue];
 }
 
+- (NSInteger)decodeIntegerForKey:(NSString *)key
+{
+    return [[self decodeObjectForKey:key] integerValue];
+}
+
 - (const uint8_t *)decodeBytesForKey:(NSString *)key 
                       returnedLength:(NSUInteger *)lengthp
 {
