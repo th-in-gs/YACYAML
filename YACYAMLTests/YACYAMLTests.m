@@ -502,4 +502,20 @@
     STAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"generic"]], nil);
 }
 
+- (void)testNullParsing
+{
+    NSString *yaml = 
+        @"empty:\n"
+        @"canonical: ~\n"
+        @"english: null\n"
+        @"~: null key\n";
+
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+    
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
+    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+}
+
 @end
