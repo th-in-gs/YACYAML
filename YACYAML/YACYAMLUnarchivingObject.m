@@ -150,8 +150,20 @@
     } else if([representedClass instancesRespondToSelector:@selector(YACYAMLUnarchivingAddObject:)]) {
         _representedObject = [[representedClass alloc] init];
     } else {
-        // No init.  We'll call initWithCoder later.
-        _representedObject = [representedClass alloc];
+        if(!_unarchiver.isInitWithCoderDisallowed) {
+            // No init.  We'll call initWithCoder later.
+            _representedObject = [representedClass alloc];
+        } else {
+            // Init with coder is disallowed.  Just present these as a simple
+            // mapping or sequence in an NSDictionary or NSArray.
+            if(type == YAML_MAPPING_START_EVENT) {
+                representedClass = [NSMutableDictionary class];
+                _representedObject = [[NSMutableDictionary alloc] init];
+            } else {
+                representedClass = [NSMutableArray class];
+                _representedObject = [[NSMutableDictionary alloc] init];
+            }
+        } 
     }
     
     if(anchorString) {

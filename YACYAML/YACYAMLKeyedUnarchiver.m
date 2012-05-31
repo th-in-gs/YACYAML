@@ -29,7 +29,11 @@ NSMutableArray *sPredicatesToClasses = nil;
     yaml_parser_t _parser;
     CFMutableDictionaryRef _anchoredObjects;
     NSMutableArray *_unarchivingObjectStack;
+    
+    BOOL _initWithCoderDisallowed;
 }
+
+@synthesize initWithCoderDisallowed = _initWithCoderDisallowed;
 
 + (void)initialize
 {
@@ -93,6 +97,8 @@ NSMutableArray *sPredicatesToClasses = nil;
                      options:(YACYAMLKeyedUnarchiverOptions)options
 {
     if((self = [super init])) {
+        _initWithCoderDisallowed = (options & YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder) == YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder;
+        
         _archivedData = data;
         
         _unarchivingObjectStack = [[NSMutableArray alloc] init];
