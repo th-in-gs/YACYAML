@@ -518,4 +518,37 @@
     STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
 }
 
+
+- (void)testYAMLExtensions
+{
+    NSString *yaml = 
+    @"empty:\n"
+    @"canonical: ~\n"
+    @"english: null\n"
+    @"~: null key\n";
+    
+    NSDictionary *unarchivedDictionary = [yaml YACYAMLUnarchive];
+    
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
+    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+    
+    unarchivedDictionary = [yaml YACYAMLUnarchiveBasic];
+    
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
+    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+    
+    unarchivedDictionary = [yaml YACYAMLUnarchiveAll];
+    
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
+    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
+    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+
+}
+
+
 @end

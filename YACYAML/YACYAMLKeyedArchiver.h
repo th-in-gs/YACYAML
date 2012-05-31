@@ -8,8 +8,6 @@
 
 #import <Foundation/Foundation.h>
 
-extern NSString * const YACYAMLUnsupportedMethodException;
-
 typedef enum YACYAMLKeyedArchiverOptions {    
     YACYAMLKeyedArchiverOptionNone                   = 0x00,
     
@@ -37,6 +35,9 @@ typedef enum YACYAMLKeyedArchiverOptions {
 
 + (NSData *)archivedDataWithRootObject:(id)rootObject;
 + (NSData *)archivedDataWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
+
++ (NSString *)archivedStringWithRootObject:(id)rootObject;
++ (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
 
 - (id)initForWritingWithMutableData:(NSMutableData *)data;
 - (id)initForWritingWithMutableData:(NSMutableData *)data options:(YACYAMLKeyedArchiverOptions)options;

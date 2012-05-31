@@ -6,7 +6,9 @@
 //  Copyright (c) 2012 Things Made Out Of Other Things. All rights reserved.
 //
 
-extern NSString * const YACYAMLUnsupportedTypeException;
+#import <YACYAML/YACYAMLConstants.h>
 
 #import <YACYAML/YACYAMLKeyedArchiver.h>
 #import <YACYAML/YACYAMLKeyedUnarchiver.h>
+
+#import <YACYAML/YACYAMLExtensions.h>

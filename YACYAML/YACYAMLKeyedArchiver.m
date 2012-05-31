@@ -8,12 +8,12 @@
 
 #import "YACYAMLKeyedArchiver.h"
 #import "YACYAMLKeyedArchiver_Package.h"
+
+#import "YACYAMLConstants.h"
+
 #import "YACYAMLArchivingObject.h"
 
 #import <libYAML/yaml.h>
-
-NSString * const YACYAMLUnsupportedTypeException = @"YACYAMLUnsupportedTypeException";
-NSString * const YACYAMLUnsupportedMethodException = @"YACYAMLUnsupportedMethodException";
 
 @implementation YACYAMLKeyedArchiver {
     NSMutableData *_dataForWriting;
@@ -40,8 +40,23 @@ NSString * const YACYAMLUnsupportedMethodException = @"YACYAMLUnsupportedMethodE
 
 + (NSData *)archivedDataWithRootObject:(id)rootObject
 {
-    return [self archivedDataWithRootObject:rootObject options:YACYAMLKeyedArchiverOptionNone];
+    return [self archivedDataWithRootObject:rootObject 
+                                    options:YACYAMLKeyedArchiverOptionNone];
 }
+
++ (NSString *)archivedStringWithRootObject:(id)rootObject
+{
+    return [[NSString alloc] initWithData:[self archivedDataWithRootObject:rootObject]
+                                 encoding:NSUTF8StringEncoding];
+}
+
++ (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
+{
+    return [[NSString alloc] initWithData:[self archivedDataWithRootObject:rootObject 
+                                                                   options:options]
+                                 encoding:NSUTF8StringEncoding];
+}
+
 
 - (id)initForWritingWithMutableData:(NSMutableData *)mdata options:(YACYAMLKeyedArchiverOptions)options
 {

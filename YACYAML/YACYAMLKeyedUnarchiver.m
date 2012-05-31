@@ -6,10 +6,10 @@
 //  Copyright (c) 2012 Things Made Out Of Other Things. All rights reserved.
 //
 
-#import "YACYAML.h"
-
 #import "YACYAMLKeyedUnarchiver.h"
 #import "YACYAMLKeyedUnarchiver_Package.h"
+
+#import "YACYAMLConstants.h"
 
 #import "YACYAMLUnarchivingObject.h"
 #import "YACYAMLUnarchivingExtensions.h"

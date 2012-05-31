@@ -6,6 +6,7 @@
 //  Copyright (c) 2012 Things Made Out Of Other Things. All rights reserved.
 //
 
+#import <Foundation/Foundation.h>
 #import <libYAML/yaml.h>
 
 extern NSString * const YACYAMLUnkeyedChildrenKey;

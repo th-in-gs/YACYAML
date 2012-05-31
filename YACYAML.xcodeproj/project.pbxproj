@@ -14,6 +14,10 @@
 		7D2A83FE1566672600E914ED /* YACYAMLArchivingObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */; };
 		7D2A847D1566956400E914ED /* YACYAMLArchivingExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D2A847B1566956400E914ED /* YACYAMLArchivingExtensions.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7D2A847E1566956400E914ED /* YACYAMLArchivingExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D2A847C1566956400E914ED /* YACYAMLArchivingExtensions.m */; };
+		7D5A0F9D1577CE7A005DAB82 /* YACYAMLConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D5A0F9B1577CE7A005DAB82 /* YACYAMLConstants.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		7D5A0F9E1577CE7A005DAB82 /* YACYAMLConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D5A0F9C1577CE7A005DAB82 /* YACYAMLConstants.m */; };
+		7D5A0FA21577CFA5005DAB82 /* YACYAMLExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D5A0FA01577CFA5005DAB82 /* YACYAMLExtensions.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		7D5A0FA31577CFA5005DAB82 /* YACYAMLExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D5A0FA11577CFA5005DAB82 /* YACYAMLExtensions.m */; };
 		7D63EEE0156D8EF700F030FD /* libresolv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D63EEDF156D8EF700F030FD /* libresolv.dylib */; };
 		7D9D55CE1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */; };
 		7D9D55CF1566FB1700CBA9B1 /* YACYAMLKeyedArchiver.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DDC0316156541F8001832F5 /* YACYAMLKeyedArchiver.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -70,12 +74,15 @@
 		7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingObject.m; sourceTree = "<group>"; };
 		7D2A847B1566956400E914ED /* YACYAMLArchivingExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLArchivingExtensions.h; sourceTree = "<group>"; };
 		7D2A847C1566956400E914ED /* YACYAMLArchivingExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingExtensions.m; sourceTree = "<group>"; };
+		7D5A0F9B1577CE7A005DAB82 /* YACYAMLConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLConstants.h; sourceTree = "<group>"; };
+		7D5A0F9C1577CE7A005DAB82 /* YACYAMLConstants.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLConstants.m; sourceTree = "<group>"; };
+		7D5A0FA01577CFA5005DAB82 /* YACYAMLExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLExtensions.h; sourceTree = "<group>"; };
+		7D5A0FA11577CFA5005DAB82 /* YACYAMLExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLExtensions.m; sourceTree = "<group>"; };
 		7D63EEDF156D8EF700F030FD /* libresolv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libresolv.dylib; path = usr/lib/libresolv.dylib; sourceTree = SDKROOT; };
 		7D69F93415696A130080741C /* TODO.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODO.txt; sourceTree = "<group>"; };
 		7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedArchiver_Package.h; sourceTree = "<group>"; };
 		7DDC030E156541F8001832F5 /* libYACYAML.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYACYAML.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DDC0311156541F8001832F5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		7DDC0315156541F8001832F5 /* YACYAML-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "YACYAML-Prefix.pch"; sourceTree = "<group>"; };
 		7DDC0316156541F8001832F5 /* YACYAMLKeyedArchiver.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedArchiver.h; sourceTree = "<group>"; };
 		7DDC0317156541F8001832F5 /* YACYAMLKeyedArchiver.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YACYAMLKeyedArchiver.m; sourceTree = "<group>"; };
 		7DDC031E156541F8001832F5 /* YACYAMLTests.octest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YACYAMLTests.octest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -243,6 +250,8 @@
 			isa = PBXGroup;
 			children = (
 				7DE66F33156E8C530016E676 /* YACYAML.h */,
+				7D5A0F9B1577CE7A005DAB82 /* YACYAMLConstants.h */,
+				7D5A0F9C1577CE7A005DAB82 /* YACYAMLConstants.m */,
 				7DECD68B156FB0E2009EE2AC /* YACYAML_Package.h */,
 				7DECD68D156FB0F4009EE2AC /* YACYAML_Package.m */,
 				7DDC0316156541F8001832F5 /* YACYAMLKeyedArchiver.h */,
@@ -259,17 +268,10 @@
 				7DE66F36156E9ADB0016E676 /* YACYAMLUnarchivingObject.m */,
 				7D19B16B15753C8C00861783 /* YACYAMLUnarchivingExtensions.h */,
 				7D19B16C15753C8D00861783 /* YACYAMLUnarchivingExtensions.m */,
-				7DDC0314156541F8001832F5 /* Supporting Files */,
+				7D5A0FA01577CFA5005DAB82 /* YACYAMLExtensions.h */,
+				7D5A0FA11577CFA5005DAB82 /* YACYAMLExtensions.m */,
 			);
 			path = YACYAML;
-			sourceTree = "<group>";
-		};
-		7DDC0314156541F8001832F5 /* Supporting Files */ = {
-			isa = PBXGroup;
-			children = (
-				7DDC0315156541F8001832F5 /* YACYAML-Prefix.pch */,
-			);
-			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
 		7DDC0327156541F8001832F5 /* YACYAMLTests */ = {
@@ -453,6 +455,8 @@
 				7DE66F34156E8C530016E676 /* YACYAML.h in Headers */,
 				7DE66F37156E9ADB0016E676 /* YACYAMLUnarchivingObject.h in Headers */,
 				7D19B16D15753C8D00861783 /* YACYAMLUnarchivingExtensions.h in Headers */,
+				7D5A0F9D1577CE7A005DAB82 /* YACYAMLConstants.h in Headers */,
+				7D5A0FA21577CFA5005DAB82 /* YACYAMLExtensions.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -590,6 +594,8 @@
 				7DE66F38156E9ADB0016E676 /* YACYAMLUnarchivingObject.m in Sources */,
 				7DECD68E156FB0F4009EE2AC /* YACYAML_Package.m in Sources */,
 				7D19B16E15753C8D00861783 /* YACYAMLUnarchivingExtensions.m in Sources */,
+				7D5A0F9E1577CE7A005DAB82 /* YACYAMLConstants.m in Sources */,
+				7D5A0FA31577CFA5005DAB82 /* YACYAMLExtensions.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -705,8 +711,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				DSTROOT = /tmp/YACYAML.dst;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "YACYAML/YACYAML-Prefix.pch";
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -717,8 +721,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				DSTROOT = /tmp/YACYAML.dst;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "YACYAML/YACYAML-Prefix.pch";
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -732,8 +734,6 @@
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(DEVELOPER_LIBRARY_DIR)/Frameworks",
 				);
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "YACYAML/YACYAML-Prefix.pch";
 				INFOPLIST_FILE = "YACYAMLTests/YACYAMLTests-Info.plist";
 				OTHER_LDFLAGS = (
 					"-ObjC",
@@ -751,8 +751,6 @@
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(DEVELOPER_LIBRARY_DIR)/Frameworks",
 				);
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "YACYAML/YACYAML-Prefix.pch";
 				INFOPLIST_FILE = "YACYAMLTests/YACYAMLTests-Info.plist";
 				OTHER_LDFLAGS = (
 					"-ObjC",
