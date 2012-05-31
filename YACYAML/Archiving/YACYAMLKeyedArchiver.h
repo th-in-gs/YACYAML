@@ -46,18 +46,44 @@ typedef enum YACYAMLKeyedArchiverOptions {
 
 @end
 
-@protocol YACYAMLArchivingScalar
 
-- (NSString*)YACYAMLScalarString; 
-
-@end
+// The below can be implemented in any classes you want to instantiate for 
+// specific YAML tags.  Note that for application-specific classes that are 
+// intended to be encoded with the regular encodeWithCoder: methods, it it 
+// _not_ necessary to implement these! 
 
 @protocol YACYAMLArchivingCustomEncoding
 
-@property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBePlainImplicit;
-@property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBeQuotedImplicit;
+// The YAML tag for this object.
+// For example, NSArray will return "tag:yaml.org,2002:seq", NSNumber will
+// return "tag:yaml.org,2002:int", "tag:yaml.org,2002:float" etc. as 
+// appropriate.
 @property (nonatomic, weak, readonly) NSString *YACYAMLArchivingTag;
 
+// Can the tag be skipped in output for this object if it's in the non-quoted
+// style?
+@property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBePlainImplicit;
+
+// Can the tag be skipped in output for this object if it's in the quoted
+// style?
+@property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBeQuotedImplicit;
+
+
+@optional
+
+// Implement this to encode a non-scalar object in a way that's custom to YAML.
+// Will be called in place of encodeWithCoder:, if it's implemented.
+// For example, an NSArray category overrides this to simple call:
+// 
+//  for(id obj in self) {
+//      [coder encodeObject:obj];
+//  }
 - (void)YACYAMLEncodeWithCoder:(YACYAMLKeyedArchiver *)coder;
+
+// Implement this to encode a scalar object in a way that's custom to YAML.
+// Will be called in place of encodeWithCoder:, if it's implemented.
+// For example, an NSNumber category overrides this to convert numbers to 
+// YAML-spec-compliant string representations.
+- (NSString*)YACYAMLScalarString; 
 
 @end

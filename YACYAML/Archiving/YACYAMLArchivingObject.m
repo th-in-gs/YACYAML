@@ -118,7 +118,7 @@
             
             if([obj respondsToSelector:@selector(YACYAMLScalarString)]) {
                 // This is a scalar object.  Emit it.
-                NSString *string = [(id<YACYAMLArchivingScalar>)obj YACYAMLScalarString];
+                NSString *string = [(id<YACYAMLArchivingCustomEncoding>)obj YACYAMLScalarString];
                             
                 const char *stringChars;
                 int stringCharsLength;

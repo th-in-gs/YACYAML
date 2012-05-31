@@ -7,7 +7,6 @@
 //
 
 #import "YACYAMLUnarchivingExtensions.h"
-#import "YACYAMLUnarchivingObject.h"
 
 #include <xlocale.h>
 #include <resolv.h>
@@ -398,7 +397,7 @@ static NSPredicate *YACYAMLNullPredicate(void)
             nil];
 }
 
-- (void)YACYAMLUnarchivingAddObject:(YACYAMLUnarchivingObject *)object
+- (void)YACYAMLUnarchivingAddObject:(id)object
 {
     [self addObject:object];
 }
@@ -414,7 +413,7 @@ static NSPredicate *YACYAMLNullPredicate(void)
             nil];
 }
 
-- (void)YACYAMLUnarchivingSetObject:(YACYAMLUnarchivingObject *)object forKey:(id)key
+- (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
     [self setObject:object forKey:key];
 }
@@ -430,7 +429,7 @@ static NSPredicate *YACYAMLNullPredicate(void)
             nil];
 }
 
-- (void)YACYAMLUnarchivingSetObject:(YACYAMLUnarchivingObject *)object forKey:(id)key
+- (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
     // YAML represents sets as mappings of the contents to nil objects.
     [self addObject:key];

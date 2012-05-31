@@ -231,7 +231,7 @@
 
 - (NSString *)YACYAMLArchivingTag
 {
-    return @"tag:yaml.org,2002:NULL";
+    return @"tag:yaml.org,2002:null";
 }
 
 - (BOOL)YACYAMLArchivingTagCanBePlainImplicit

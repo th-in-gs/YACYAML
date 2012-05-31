@@ -8,8 +8,6 @@
 
 #import <Foundation/Foundation.h>
 
-@class YACYAMLUnarchivingObject;
-
 typedef enum YACYAMLKeyedUnarchiverOptions {    
     YACYAMLKeyedUnarchiverOptionNone                    = 0x00,
     
@@ -33,6 +31,7 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 
 @interface YACYAMLKeyedUnarchiver : NSCoder
 
+// See comments in YACYAMLKeyedUnarchiverOptions.
 @property (nonatomic, readonly, getter = isInitWithCoderDisallowed) BOOL initWithCoderDisallowed;
 
 + (id)unarchiveObjectWithString:(NSString *)string;
@@ -44,35 +43,76 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 - (id)initForReadingWithData:(NSData *)data;
 - (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options;
 
+
+// Use this to register classes that should be handled specially by the 
+// unarchiver (see below).
 + (void)registerUnarchivingClass:(Class)unarchivingClass;
 
 @end
 
+
+// The below can be implemented in any classes you want to instantiate for 
+// specific YAML tags.  Note that for application-specific classes encoded with 
+// the encodeWithCoder: methods, it it _not_ necessary to implement these! 
+// They're intended to give more specific control only if necessary.
+// Remember to call [YACYAMLUnarchiver registerUnarchivingClass:] for any 
+// classes you implement these on before trying to decode!
+
+@protocol YACYAMLUnarchivingSequence
+
+// This class will be instantiated for any YAML tags in this array.
+// For example, to handle YAML sequences, a category is defined on 
+// NSMutableArray that returns:
+//     [NSArray arrayWithObject: @"tag:yaml.org,2002:seq"];
+// Then, for any YAML entity that has the @"tag:yaml.org,2002:seq" tag, 
+// an NSMutableArray is instantiated, and its elements are set with the 
+// YACYAMLUnarchivingSetObject... instance method, below.
++ (NSArray *)YACYAMLUnarchivingTags;
+
+// Called for each decoded child of the sewuence.
+- (void)YACYAMLUnarchivingAddObject:(id)object;
+
+@end
+
+// Similar to the above, but for classes represented by YAML mappings.
 @protocol YACYAMLUnarchivingMapping
 
 + (NSArray *)YACYAMLUnarchivingTags;
 
-- (void)YACYAMLUnarchivingSetObject:(YACYAMLUnarchivingObject *)object
+- (void)YACYAMLUnarchivingSetObject:(id)object
                              forKey:(id)key;
 
 @end
 
-@protocol YACYAMLUnarchivingSequence
 
-+ (NSArray *)YACYAMLUnarchivingTags;
-
-- (void)YACYAMLUnarchivingAddObject:(YACYAMLUnarchivingObject *)object;
-
-@end
-
+// Used to provide support for mapping YAML scalars to ObjC objects.
 @protocol YACYAMLUnarchivingScalar
 
+
+// This class will be instantiated for any YAML tags in this array.
+// For example, to handle YAML sequences, a category is defined on NSData
+// that returns:
+//     [NSArray arrayWithObject: @"tag:yaml.org,2002:binary"];
+// Then, for any YAML entity that has the @"tag:yaml.org,2002:binary" tag, 
+// an NSMutableArray is instantiated, and its elements are set with the 
+// init methods defined below.
 + (NSArray *)YACYAMLUnarchivingTags;
 
 @optional
 
+// This is an array of NSPredicate objects that will be called on any otherwise
+// untagged implicit strings from the YAML to see if this class should be used
+// to represent them.
+// For example, a class representing YAML's "tag:yaml.org,2002:float" scalar
+// could return (this regex from the YAML spec):
+//     [NSArray arrayWithObject:[NSPredicate predicateWithFormat:@"SELF MATCHES %@",
+//          @"[-+]?([0-9][0-9_]*)?\\.[0-9.]*([eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\\.[0-9_]*"]];
+// [Note that, in reality, "tag:yaml.org,2002:float" is already handled by a 
+// category on NSNumber].
 + (NSArray *)YACYAMLUnarchivingScalarPredicates;
 
+// Used to initialise objects matching the YAML tag or scalars with strings
+// matching the NSPredicate, above.
 - (id)initWithYACYAMLScalarString:(NSString *)string;
 - (id)initWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length;
 
