@@ -8,7 +8,7 @@ jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http:
 ## What it is
 
 - YACYAML reads and writes YAML, a friendier, more human, replacement for plists or JSON.
-- YACYAML also works as a drop-in replacement for NSKeyedArchiver and NSKeyedUnarchiver in most situations.
+- YACYAML also works as a drop-in replacement for NSKeyedArchiver and NSKeyedUnarchiver in most situations, and writes a human-readable, less proprietary format.
 - YACYAML is for iOS and Mac OS X.
 
 
