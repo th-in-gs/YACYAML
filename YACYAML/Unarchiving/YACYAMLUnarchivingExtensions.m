@@ -107,8 +107,6 @@ static NSPredicate *YACYAMLNotANumberPredicate(void)
 
 }
 
-
-
 static NSPredicate *YACYAMLBoolTruePredicate(void)
 {
     // http://yaml.org/type/bool.html
@@ -146,16 +144,14 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
 }
 
 
-+ (NSArray *)YACYAMLUnarchivingScalarPredicates
++ (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 {
-    return [[NSArray alloc] initWithObjects:
-            YACYAMLIntPredicate(), 
-            YACYAMLFloatPredicate(),
-            YACYAMLInfinityPredicate(),
-            YACYAMLNotANumberPredicate(),
-            YACYAMLBoolTruePredicate(),
-            YACYAMLBoolFalsePredicate(),
-            nil];
+    return [YACYAMLIntPredicate() evaluateWithObject:scalarString] || 
+           [YACYAMLFloatPredicate() evaluateWithObject:scalarString] || 
+           [YACYAMLInfinityPredicate() evaluateWithObject:scalarString] || 
+           [YACYAMLNotANumberPredicate() evaluateWithObject:scalarString] || 
+           [YACYAMLBoolTruePredicate() evaluateWithObject:scalarString] || 
+           [YACYAMLBoolFalsePredicate() evaluateWithObject:scalarString];
 }
 
 
@@ -376,9 +372,9 @@ static NSPredicate *YACYAMLNullPredicate(void)
     return predicate;
 }
 
-+ (NSArray *)YACYAMLUnarchivingScalarPredicates
++ (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 {
-    return [[NSArray alloc] initWithObjects:YACYAMLNullPredicate(), nil];
+    return [YACYAMLNullPredicate() evaluateWithObject:scalarString];
 }
 
 - (id)initWithYACYAMLScalarString:(NSString *)string;

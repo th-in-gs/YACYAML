@@ -88,7 +88,6 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 // Used to provide support for mapping YAML scalars to ObjC objects.
 @protocol YACYAMLUnarchivingScalar
 
-
 // This class will be instantiated for any YAML tags in this array.
 // For example, to handle YAML sequences, a category is defined on NSData
 // that returns:
@@ -100,16 +99,14 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 
 @optional
 
-// This is an array of NSPredicate objects that will be called on any otherwise
-// untagged implicit strings from the YAML to see if this class should be used
-// to represent them.
+// Should this class be instantiated for a given scalar string with no tag?
 // For example, a class representing YAML's "tag:yaml.org,2002:float" scalar
-// could return (this regex from the YAML spec):
-//     [NSArray arrayWithObject:[NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-//          @"[-+]?([0-9][0-9_]*)?\\.[0-9.]*([eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\\.[0-9_]*"]];
+// would return YES for strings matching a
+//     [-+]?([0-9][0-9_]*)?\\.[0-9.]*([eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\\.[0-9_]*
+// regex (as specified in the YAML spec).
 // [Note that, in reality, "tag:yaml.org,2002:float" is already handled by a 
 // category on NSNumber].
-+ (NSArray *)YACYAMLUnarchivingScalarPredicates;
++ (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 
 // Used to initialise objects matching the YAML tag or scalars with strings
 // matching the NSPredicate, above.

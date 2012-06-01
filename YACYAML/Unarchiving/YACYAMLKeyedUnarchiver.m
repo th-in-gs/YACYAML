@@ -21,8 +21,8 @@
 pthread_mutex_t sTagsToClassesMutex = PTHREAD_MUTEX_INITIALIZER;
 NSMutableDictionary *sTagsToClasses = nil;
 
-pthread_mutex_t sPredicatesToClassesMutex = PTHREAD_MUTEX_INITIALIZER;
-NSMutableArray *sPredicatesToClasses = nil;
+pthread_mutex_t sImplicitScalarClassesMutex = PTHREAD_MUTEX_INITIALIZER;
+NSMutableArray *sImplicitScalarClasses = nil;
 
 @implementation YACYAMLKeyedUnarchiver {
     NSData *_archivedData;
@@ -48,7 +48,6 @@ NSMutableArray *sPredicatesToClasses = nil;
     {
         if(!sTagsToClasses) {
             sTagsToClasses = [[NSMutableDictionary alloc] init];
-            sPredicatesToClasses = [[NSMutableArray alloc] init];
         }
         if([unarchivingClass respondsToSelector:@selector(YACYAMLUnarchivingTags)]) {
             for(NSString *tag in [unarchivingClass YACYAMLUnarchivingTags]) {
@@ -58,19 +57,16 @@ NSMutableArray *sPredicatesToClasses = nil;
     }
     pthread_mutex_unlock(&sTagsToClassesMutex);
     
-    pthread_mutex_lock(&sPredicatesToClassesMutex);
+    pthread_mutex_lock(&sImplicitScalarClassesMutex);
     {
-        if(!sPredicatesToClasses) {
-            sPredicatesToClasses = [[NSMutableArray alloc] init];
+        if(!sImplicitScalarClasses) {
+            sImplicitScalarClasses = [[NSMutableArray alloc] init];
         }
-        if([unarchivingClass respondsToSelector:@selector(YACYAMLUnarchivingScalarPredicates)]) {
-            for(NSPredicate *predicate in [unarchivingClass YACYAMLUnarchivingScalarPredicates]) {
-                [sPredicatesToClasses addObject:predicate];
-                [sPredicatesToClasses addObject:unarchivingClass];
-            }
+        if([unarchivingClass respondsToSelector:@selector(YACYAMLImplicitlyMatchesScalarString:)]) {
+            [sImplicitScalarClasses addObject:unarchivingClass];
         }
     }
-    pthread_mutex_unlock(&sPredicatesToClassesMutex);
+    pthread_mutex_unlock(&sImplicitScalarClassesMutex);
 }
 
 + (id)unarchiveObjectWithString:(NSString *)string
@@ -210,18 +206,16 @@ NSMutableArray *sPredicatesToClasses = nil;
 {
     Class ret = nil;
     
-    pthread_mutex_lock(&sPredicatesToClassesMutex);
+    pthread_mutex_lock(&sImplicitScalarClassesMutex);
     {
-        NSUInteger count = sPredicatesToClasses.count;
-        for(int i = 0; i < count; i += 2) {
-            NSPredicate *predicate = [sPredicatesToClasses objectAtIndex:i];
-            if([predicate evaluateWithObject:scalarString]) {
-                ret = [sPredicatesToClasses objectAtIndex:i + 1];
+        for(id class in sImplicitScalarClasses) {
+            if([(Class)class YACYAMLImplicitlyMatchesScalarString:scalarString]) {
+                ret = (Class)class;
                 break;
             }
         }
     }
-    pthread_mutex_unlock(&sPredicatesToClassesMutex);
+    pthread_mutex_unlock(&sImplicitScalarClassesMutex);
     
     return ret;
 }
