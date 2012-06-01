@@ -78,7 +78,7 @@ A more complex example, with nested elements.  This is an excerpt from [Eucalypt
     language: en
     lcc: PS
     lcsh:
-        - Science fiction"
+        - Science fiction
         - Carter, John (Fictitious character) -- Fiction
         - Dejah Thoris (Fictitious character) -- Fiction
         - Mars (Planet) -- Fiction
