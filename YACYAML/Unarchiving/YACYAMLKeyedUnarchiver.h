@@ -40,8 +40,14 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 + (id)unarchiveObjectWithData:(NSData *)data;
 + (id)unarchiveObjectWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options;
 
++ (id)unarchiveObjectWithFile:(NSString *)path;
++ (id)unarchiveObjectWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options;
+
 - (id)initForReadingWithData:(NSData *)data;
 - (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options;
+
+- (id)initForReadingWithFile:(NSString *)path;
+- (id)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options;
 
 
 // Use this to register classes that should be handled specially by the 

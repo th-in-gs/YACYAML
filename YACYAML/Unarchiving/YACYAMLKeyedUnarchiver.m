@@ -26,6 +26,8 @@ NSMutableArray *sImplicitScalarClasses = nil;
 
 @implementation YACYAMLKeyedUnarchiver {
     NSData *_archivedData;
+    FILE *_archivedFile;
+    
     yaml_parser_t _parser;
     NSMutableDictionary *_anchoredObjects;
     NSMutableArray *_unarchivingObjectStack;
@@ -34,6 +36,9 @@ NSMutableArray *sImplicitScalarClasses = nil;
 }
 
 @synthesize initWithCoderDisallowed = _initWithCoderDisallowed;
+
+
+#pragma mark - Global setup
 
 + (void)initialize
 {
@@ -69,15 +74,19 @@ NSMutableArray *sImplicitScalarClasses = nil;
     pthread_mutex_unlock(&sImplicitScalarClassesMutex);
 }
 
-+ (id)unarchiveObjectWithString:(NSString *)string
-{
-    return [self unarchiveObjectWithString:string options:YACYAMLKeyedUnarchiverOptionNone];
-}
+
+#pragma mark - Convenience methods
 
 + (id)unarchiveObjectWithString:(NSString *)string options:(YACYAMLKeyedUnarchiverOptions)options
 {
     return [self unarchiveObjectWithData:[string dataUsingEncoding:NSUTF8StringEncoding] options:options];
 }
+
++ (id)unarchiveObjectWithString:(NSString *)string
+{
+    return [self unarchiveObjectWithString:string options:YACYAMLKeyedUnarchiverOptionNone];
+}
+
 
 + (id)unarchiveObjectWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options
 {
@@ -89,17 +98,60 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return [self unarchiveObjectWithData:data options:YACYAMLKeyedUnarchiverOptionNone];
 }
 
-- (id)initForReadingWithData:(NSData *)data
-                     options:(YACYAMLKeyedUnarchiverOptions)options
++ (id)unarchiveObjectWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options
+{
+    return [[[self alloc] initForReadingWithFile:path options:options] decodeObject];
+}
+
++ (id)unarchiveObjectWithFile:(NSString *)path
+{
+    return [self unarchiveObjectWithFile:path options:YACYAMLKeyedUnarchiverOptionNone];
+}
+
+
+#pragma mark - Initialization/destruction
+
+- (BOOL)_setupForReadingWithOptions:(YACYAMLKeyedUnarchiverOptions)options
+{
+    BOOL success = YES;
+    
+    _initWithCoderDisallowed = (options & YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder) == YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder;
+    
+    _anchoredObjects = [[NSMutableDictionary alloc] init];
+    
+    _unarchivingObjectStack = [[NSMutableArray alloc] init];
+    
+    // Parse to after the stream starts, unless we've been asked to 
+    // unarchive multiple documents as an array.
+    if((options & YACYAMLKeyedUnarchiverOptionPresentDocumentsAsArray) != YACYAMLKeyedUnarchiverOptionPresentDocumentsAsArray) {
+        BOOL keepParsing = YES;
+        while(keepParsing) {
+            yaml_event_t event;
+            if(yaml_parser_parse(&_parser, &event)) {
+                if(event.type == YAML_STREAM_START_EVENT) {
+                    keepParsing = NO;
+                }
+                yaml_event_delete(&event);
+            } else {
+                success = NO;
+                keepParsing = NO;
+            }
+        }
+    }
+    
+    if(success) {
+        // This object will represent the entire document.
+        [_unarchivingObjectStack addObject:[[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
+                                                                              forUnarchiver:self]];
+    }
+    
+    return success;
+}
+
+- (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options
 {
     if((self = [super init])) {
-        _initWithCoderDisallowed = (options & YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder) == YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder;
-        
         _archivedData = data;
-
-        _anchoredObjects = [[NSMutableDictionary alloc] init];
-
-        _unarchivingObjectStack = [[NSMutableArray alloc] init];
         
         yaml_parser_initialize(&_parser);
         
@@ -112,29 +164,9 @@ NSMutableArray *sImplicitScalarClasses = nil;
         }
         
         yaml_parser_set_input_string(&_parser, bytes, size);
-    
-        // Parse to after the stream starts, unless we've been asked to 
-        // unarchive multiple documents as an array.
-        if((options & YACYAMLKeyedUnarchiverOptionPresentDocumentsAsArray) != YACYAMLKeyedUnarchiverOptionPresentDocumentsAsArray) {
-            BOOL keepParsing = YES;
-            while(keepParsing) {
-                yaml_event_t event;
-                if(yaml_parser_parse(&_parser, &event)) {
-                    if(event.type == YAML_STREAM_START_EVENT) {
-                        keepParsing = NO;
-                    }
-                    yaml_event_delete(&event);
-                } else {
-                    self = nil;
-                    keepParsing = NO;
-                }
-            }
-        }
-    
-        if(self) {
-            // This object will represent the entire document.
-            [_unarchivingObjectStack addObject:[[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
-                                                                                  forUnarchiver:self]];
+        
+        if(![self _setupForReadingWithOptions:options]) {
+            self = nil;
         }
     }
     
@@ -146,41 +178,42 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return [self initForReadingWithData:data options:YACYAMLKeyedUnarchiverOptionNone];
 }
 
+
+- (id)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options
+{
+    if((self = [super init])) {
+        _archivedFile = fopen([path fileSystemRepresentation], "r");
+        
+        if(_archivedFile) {
+            yaml_parser_initialize(&_parser);
+            yaml_parser_set_input_file(&_parser, _archivedFile);
+            
+            if(![self _setupForReadingWithOptions:options]) {
+                self = nil;
+            }
+        } else {
+            self = nil;
+        }
+    }
+    
+    return self;
+}
+
+- (id)initForReadingWithFile:(NSString *)path
+{
+    return [self initForReadingWithFile:path options:YACYAMLKeyedUnarchiverOptionNone];
+}
+
 - (void)dealloc
 {
+    if(_archivedFile) {
+        fclose(_archivedFile);
+    }
     yaml_parser_delete(&_parser);
 }
 
-- (BOOL)allowsKeyedCoding
-{
-    return YES;
-}
 
-- (yaml_parser_t *)parser
-{
-    return &_parser;
-}
-
-- (void)setUnrchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
-                  forAnchor:(NSString *)anchor
-{
-    [_anchoredObjects setObject:unarchivingObject forKey:anchor];
-}
-
-- (YACYAMLUnarchivingObject *)previouslyInstantiatedUnarchivingObjectForAnchor:(NSString *)anchor
-{
-    return [_anchoredObjects valueForKey:anchor];
-}
-
-- (void)pushUnarchivingObject:(YACYAMLUnarchivingObject *)archivingObject
-{
-    [_unarchivingObjectStack addObject:archivingObject];
-}
-
-- (void)popUnarchivingObject
-{
-    [_unarchivingObjectStack removeLastObject];
-}
+#pragma mark - Package scope, Used by YACYAMLUnarchivingObject during unarchiving
 
 + (Class)classForYAMLTag:(NSString *)tag
 {
@@ -220,7 +253,36 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return ret;
 }
 
-#pragma mark - Keyed unarchiving methods
+
+- (void)setUnrchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
+                  forAnchor:(NSString *)anchor
+{
+    [_anchoredObjects setObject:unarchivingObject forKey:anchor];
+}
+
+- (YACYAMLUnarchivingObject *)previouslyInstantiatedUnarchivingObjectForAnchor:(NSString *)anchor
+{
+    return [_anchoredObjects valueForKey:anchor];
+}
+
+
+- (void)pushUnarchivingObject:(YACYAMLUnarchivingObject *)archivingObject
+{
+    [_unarchivingObjectStack addObject:archivingObject];
+}
+
+- (void)popUnarchivingObject
+{
+    [_unarchivingObjectStack removeLastObject];
+}
+
+
+#pragma mark - Keyed unarchiving
+
+- (BOOL)allowsKeyedCoding
+{
+    return YES;
+}
 
 - (BOOL)containsValueForKey:(NSString *)key
 {
@@ -275,7 +337,8 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return data.bytes;
 }
 
-#pragma mark - Non-keyed unarchiving methods
+
+#pragma mark - Old-school non-keyed unarchiving
 
 - (id)decodeObject
 {

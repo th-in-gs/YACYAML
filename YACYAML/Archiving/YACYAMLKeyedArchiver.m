@@ -17,6 +17,8 @@
 
 @implementation YACYAMLKeyedArchiver {
     NSMutableData *_dataForWriting;
+    FILE *_fileForWriting;
+    
     BOOL _scalarAnchorsAllowed;
     
     YACYAMLArchivingObject *_rootObject;
@@ -28,6 +30,9 @@
 }
 
 @synthesize scalarAnchorsAllowed = _scalarAnchorsAllowed;
+
+
+#pragma mark - Convenince methods
 
 + (NSData *)archivedDataWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options
 {
@@ -44,51 +49,76 @@
                                     options:YACYAMLKeyedArchiverOptionNone];
 }
 
-+ (NSString *)archivedStringWithRootObject:(id)rootObject
-{
-    return [[NSString alloc] initWithData:[self archivedDataWithRootObject:rootObject]
-                                 encoding:NSUTF8StringEncoding];
-}
-
-+ (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
++ (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options
 {
     return [[NSString alloc] initWithData:[self archivedDataWithRootObject:rootObject 
                                                                    options:options]
                                  encoding:NSUTF8StringEncoding];
 }
 
++ (NSString *)archivedStringWithRootObject:(id)rootObject
+{
+    return [self archivedStringWithRootObject:rootObject
+                                      options:YACYAMLKeyedArchiverOptionNone];
+}
+
++ (BOOL)archiveRootObject:(id)rootObject 
+                   toFile:(NSString *)path
+                  options:(YACYAMLKeyedArchiverOptions)options
+{
+    BOOL success = NO;
+    YACYAMLKeyedArchiver *archiver = [[[self class] alloc] initForWritingToFile:path options:options];
+    if(archiver) {
+        [archiver encodeRootObject:rootObject];
+        [archiver finishEncoding];
+        success = YES;
+    }
+    return success;
+}
+
++ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path
+{
+    return [self archiveRootObject:rootObject toFile:path options:YACYAMLKeyedArchiverOptionNone];
+}
+
+
+#pragma mark - Initialization/destruction
+
+- (void)_setupForWritingWithOptions:(YACYAMLKeyedArchiverOptions)options
+{
+    _rootObject = [[YACYAMLArchivingObject alloc] initWithRepresentedObject:nil
+                                                                forArchiver:self];
+    _archivingObjectStack = [[NSMutableArray alloc] init];
+    [_archivingObjectStack addObject:_rootObject];
+    
+    _archivedObjectToItem = CFDictionaryCreateMutable(kCFAllocatorDefault,
+                                                      0,
+                                                      &(const CFDictionaryKeyCallBacks) {
+                                                          0,
+                                                          kCFTypeDictionaryKeyCallBacks.retain,
+                                                          kCFTypeDictionaryKeyCallBacks.release,
+                                                          kCFTypeDictionaryKeyCallBacks.copyDescription,
+                                                          (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
+                                                            nil : kCFTypeDictionaryKeyCallBacks.equal,
+                                                          (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
+                                                            nil : kCFTypeDictionaryKeyCallBacks.hash,
+                                                      },
+                                                      &(const CFDictionaryValueCallBacks) {
+                                                          0,
+                                                          NULL,
+                                                          NULL,
+                                                          kCFTypeDictionaryValueCallBacks.copyDescription,
+                                                          NULL
+                                                      });
+    
+    _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
+}
 
 - (id)initForWritingWithMutableData:(NSMutableData *)mdata options:(YACYAMLKeyedArchiverOptions)options
 {
     if((self = [super init])) {
         _dataForWriting = mdata;
-        
-        _rootObject = [[YACYAMLArchivingObject alloc] initWithRepresentedObject:nil
-                                                                    forArchiver:self];
-        _archivingObjectStack = [[NSMutableArray alloc] init];
-        [_archivingObjectStack addObject:_rootObject];
-        
-        _archivedObjectToItem = CFDictionaryCreateMutable(kCFAllocatorDefault,
-                                                          0,
-                                                          &(const CFDictionaryKeyCallBacks) {
-                                                              0,
-                                                              kCFTypeDictionaryKeyCallBacks.retain,
-                                                              kCFTypeDictionaryKeyCallBacks.release,
-                                                              kCFTypeDictionaryKeyCallBacks.copyDescription,
-                                                              (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
-                                                                nil : kCFTypeDictionaryKeyCallBacks.equal,
-                                                              (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
-                                                                nil : kCFTypeDictionaryKeyCallBacks.hash,
-                                                          },
-                                                          &(const CFDictionaryValueCallBacks) {
-                                                              0,
-                                                              NULL,
-                                                              NULL,
-                                                              kCFTypeDictionaryValueCallBacks.copyDescription,
-                                                              NULL
-                                                          });
-        
-        _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
+        [self _setupForWritingWithOptions:options];
     }
     return self;
 }
@@ -96,6 +126,26 @@
 - (id)initForWritingWithMutableData:(NSMutableData *)data
 {
     return [self initForWritingWithMutableData:data options:YACYAMLKeyedArchiverOptionNone];
+}
+
+
+- (id)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options
+{
+    if((self = [super init])) {
+        _fileForWriting = fopen([path fileSystemRepresentation], "w");
+        if(_fileForWriting) {
+            [self _setupForWritingWithOptions:options];
+        } else {
+            self = nil;
+        }
+    }
+    return self;
+
+}
+
+- (id)initForWritingToFile:(NSString *)path
+{
+    return [self initForWritingToFile:path options:YACYAMLKeyedArchiverOptionNone];
 }
 
 - (void)dealloc
@@ -119,7 +169,11 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     yaml_emitter_set_unicode(&emitter, 1);
     yaml_emitter_set_width(&emitter, 72);
     
-    yaml_emitter_set_output(&emitter, EmitToNSMutableData, (__bridge void *)_dataForWriting);
+    if(_fileForWriting) {
+        yaml_emitter_set_output_file(&emitter, _fileForWriting); 
+    } else {
+        yaml_emitter_set_output(&emitter, EmitToNSMutableData, (__bridge void *)_dataForWriting);  
+    }
     
     yaml_event_t event;
     
@@ -135,7 +189,7 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 }
 
 
-#pragma mark - Package-scope
+#pragma mark - Package scope, used by YACYAMLUnarchivingObject during unarchiving
 
 - (void)pushArchivingObject:(YACYAMLArchivingObject *)archivingObject
 {
@@ -172,8 +226,6 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     do {
         int remainder = value % 52;
         
-        // Compensate for the last letter of the series being corrected on 2 or 
-        // more iterations.
         if (converted && value < 53) {
             remainder--;
         }
@@ -202,13 +254,13 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     return [self _anchorStringForNumber:_generatedAnchorCount++];
 }
 
+
 #pragma mark - NSCoder
 
 - (BOOL)allowsKeyedCoding
 {
 	return YES;
 }
-
 
 - (unsigned)systemVersion
 {
@@ -218,15 +270,12 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 }
 
 
-#pragma mark - Main funnel method
+#pragma mark - Keyed archiving
 
 - (void)encodeObject:(id)obj forKey:(NSString *)key
 {
     [[_archivingObjectStack lastObject] encodeChild:obj forKey:key];
 }
-
-
-#pragma mark - Keyed archiving methods
 
 - (void)encodeConditionalObject:(id)objv forKey:(NSString *)key
 {
@@ -235,7 +284,8 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 - (void)encodeBool:(BOOL)boolv forKey:(NSString *)key
 {
-    [self encodeObject:(__bridge id)(boolv ? kCFBooleanTrue : kCFBooleanFalse) forKey:key];
+    [self encodeObject:(__bridge id)(boolv ? kCFBooleanTrue : kCFBooleanFalse) 
+                forKey:key];
 }
 
 - (void)encodeInt:(int)intv forKey:(NSString *)key
@@ -274,7 +324,7 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 }
 
 
-#pragma mark - Non-keyed archiving methods
+#pragma mark - Old-school non-keyed archiving
 
 - (void)encodeValueOfObjCType:(const char *)type at:(const void *)addr
 {

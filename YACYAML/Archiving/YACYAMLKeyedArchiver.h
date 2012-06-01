@@ -50,8 +50,13 @@ typedef enum YACYAMLKeyedArchiverOptions {
 + (NSString *)archivedStringWithRootObject:(id)rootObject;
 + (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
 
++ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path;
+
 - (id)initForWritingWithMutableData:(NSMutableData *)data;
 - (id)initForWritingWithMutableData:(NSMutableData *)data options:(YACYAMLKeyedArchiverOptions)options;
+
+- (id)initForWritingToFile:(NSString *)path;
+- (id)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options;
 
 - (void)finishEncoding;
 
