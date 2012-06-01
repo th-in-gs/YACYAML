@@ -62,42 +62,6 @@ synopsis: >-
     inspired writers & readers for nearly a century.
 ```
 
-
-## Example encoded objects
-
-An array of strings:
-
-```ObjC
-[[NSArray arrayWithObjects:@"one", @"two", @"three", nil] YACYAMLEncodedString];
-```
-
-```
-- one
-- two
-- three
-```
-
-Also valid is, for example, `[one, two, three]`
-
-A dictionary of strings:
-
-```ObjC
-[[NSDictionary dictionaryWithObjectsAndKeys:@"one", @"onekey",
-                                            @"two", @"twokey",
-                                            @"three", @"threekey",
-                                            nil] YACYAMLEncodedString];
-```
-
-```
-onekey: one
-twokey: two
-threekey: three
-```
-
-You could also write, for example, `{ onekey: one, twoKey: two, threeKey: three }`
-
-
-
 A more complex example, with nested elements.  This is an excerpt from Eucalyptus' catalog of books.  I hope you'll agree it's nicer than a plist, and I also think it's nicer than JSON (which, incidentally, couldn't represent the structure fully, because it uses integers - `62` in this excerpt - as dictionary keys):
 
 ```YAML
@@ -152,6 +116,42 @@ This is a JSON almost-equivalent - I've tried to indent is as readably as I can:
     }
 }
 ```
+
+
+
+## Example encoded objects
+
+An array of strings:
+
+```ObjC
+[[NSArray arrayWithObjects:@"one", @"two", @"three", nil] YACYAMLEncodedString];
+```
+
+```
+- one
+- two
+- three
+```
+
+Also valid is, for example, `[one, two, three]`
+
+A dictionary of strings:
+
+```ObjC
+[[NSDictionary dictionaryWithObjectsAndKeys:@"one", @"onekey",
+                                            @"two", @"twokey",
+                                            @"three", @"threekey",
+                                            nil] YACYAMLEncodedString];
+```
+
+```
+onekey: one
+twokey: two
+threekey: three
+```
+
+You could also write, for example, `{ onekey: one, twoKey: two, threeKey: three }`
+
 
 And, to show that this can archive arbitrary Cocoa objects (that implement `NSCoder`), here's a good old Mac OS NSButton (not that you'd write this by hand, but I think there's value in having is stored in human-readable format rather than what NSKeyedArchiver emits.
 
