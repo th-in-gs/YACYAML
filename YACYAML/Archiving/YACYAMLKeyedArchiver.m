@@ -186,6 +186,12 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     yaml_emitter_emit(&emitter, &event);
     
     yaml_emitter_delete(&emitter);
+    
+    
+    if(_fileForWriting) {
+        fclose(_fileForWriting);
+        _fileForWriting = NULL;
+    }
 }
 
 
@@ -274,7 +280,8 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 - (void)encodeObject:(id)obj forKey:(NSString *)key
 {
-    [[_archivingObjectStack lastObject] encodeChild:obj forKey:key];
+    [[_archivingObjectStack lastObject] encodeChild:obj ?: [NSNull null]
+                                             forKey:key];
 }
 
 - (void)encodeConditionalObject:(id)objv forKey:(NSString *)key
