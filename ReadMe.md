@@ -123,7 +123,8 @@ The short version of how to set up your project to use YACYAML:
 -- Under _Link Binary With Libraries_, press the '+' button, and add _libresolv.dylib_ from your target SDK (libresolv provides Base64 encoding, used by YACYAML when reading and writing NSData objects).
 - In your app's target settings, in the _Build Settings_ section:
 -- Make sure _All_, not _Basic_ is selected at the top.
--- In the _HEADER_SEARCH_PATHS_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"`
+-- On the _Header Saearch Paths_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"` (make sure to include the quotes!)
+-- On the _Other Linker Flags_ line, make sure the flags `-ObjC` and `-all_load` are there (add them if they're not).
 - When you want to use YACYAML, just `#import <YACYAML/YACYAML.h>`.
 
 
