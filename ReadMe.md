@@ -110,6 +110,23 @@ A whole UIButton:
 YACYAML uses YAML's 'anchors' to store repeated objects only once, and refer to them later.  By default, repeated strings are stored, for human-readability, but you can change that behaviour id you want smaller, but less human-readable output.  Check out `YACYAMLKeyedArchiver`'s `YACYAMLKeyedArchiverOptionAllowScalarAnchors` option.
 
 
+## How to use YACYAML in your iOS or Mac project
+
+YACYAML is designed to be built as an static library and used directly by Xcode, as a subproject to an your project.  (like [this](http://www.blog.montgomerie.net/easy-xcode-static-library-subprojects-and-submodules)).
+
+The short version of how to set up your project to use YACYAML:
+- Copy the YACYAML directory into, or (better) clone a YACYAML repository as a Git submodule in, your app project's directory hierarchy somewhere.
+- In your app's Xcode project, drag the YACYAML.project into the navigator tree on the left.
+- In your app's Xcode target settings, in the _Build Phases_ section:
+-- Under _Target Dependencies_, press the '+' button, and add the _YACYAML_ target from the _YACYAML_ project.
+-- Under _Link Binary With Libraries_, press the '+' button, and add _libYACYAML.a_ the _YACYAML_ project.
+-- Under _Link Binary With Libraries_, press the '+' button, and add _libresolv.dylib_ from your target SDK (libresolv provides Base64 encoding, used by YACYAML when reading and writing NSData objects).
+- In your app's target settings, in the _Build Settings_ section:
+-- Make sure _All_, not _Basic_ is selected at the top.
+-- In the _HEADER_SEARCH_PATHS_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"`
+- When you want to use YACYAML, just `#import <YACYAML/YACYAML.h>`.
+
+
 ## YACYAML?
 
 YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than that now.
