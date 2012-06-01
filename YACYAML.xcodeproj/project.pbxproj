@@ -70,6 +70,7 @@
 /* Begin PBXFileReference section */
 		7D19B16B15753C8C00861783 /* YACYAMLUnarchivingExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLUnarchivingExtensions.h; sourceTree = "<group>"; };
 		7D19B16C15753C8D00861783 /* YACYAMLUnarchivingExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLUnarchivingExtensions.m; sourceTree = "<group>"; };
+		7D1A5528157911BF00B59520 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		7D1D21621577E94E00AB7951 /* ReadMe.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ReadMe.md; sourceTree = "<group>"; wrapsLines = 1; };
 		7D2A83F61565461E00E914ED /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
 		7D2A83FB1566672600E914ED /* YACYAMLArchivingObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLArchivingObject.h; sourceTree = "<group>"; };
@@ -247,6 +248,7 @@
 			children = (
 				7D1D21621577E94E00AB7951 /* ReadMe.md */,
 				7D69F93415696A130080741C /* ToDo.txt */,
+				7D1A5528157911BF00B59520 /* LICENSE */,
 				7D2A83F61565461E00E914ED /* config.h */,
 				7DE3E3B815654441006663D2 /* libYAML */,
 				7DDC0313156541F8001832F5 /* YACYAML */,

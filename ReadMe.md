@@ -115,4 +115,4 @@ YACYAML stood for "Yet Another Cocoa YAML", but I think it deserves better than 
 
 The creators of YAML.
 <i>why the lucky stiff</i> for his <i>Syck</i> YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
-XXXXXXX for libyaml, which YACYAML is based on, and without which I don't think I'd have contemplated making it.
+Kirill Simonov for libyaml, which YACYAML is based on, and without which I don't think I'd have contemplated this.
