@@ -66,6 +66,7 @@ A more complex example, with nested elements.  This is an excerpt from [Eucalypt
 
 ```YAML
 62:
+    title: A Princess of Mars
     creator: Burroughs, Edgar Rice, 1875-1950
     description: Barsoom series, volume 1
     file:
@@ -84,7 +85,6 @@ A more complex example, with nested elements.  This is an excerpt from [Eucalypt
         - Mars (Planet) -- Fiction
         - Princesses -- Fiction
     rights: http://www.gutenberg.org/license
-    title: A Princess of Mars
 ```
 
 This is a JSON almost-equivalent - I've tried to indent is as readably as I can:
@@ -92,6 +92,7 @@ This is a JSON almost-equivalent - I've tried to indent is as readably as I can:
 ```JSON
 { 
     "62": { 
+        "title": "A Princess of Mars",
         "creator": "Burroughs, Edgar Rice, 1875-1950",
         "description": "Barsoom series, volume 1",
         "file": { 
@@ -113,7 +114,6 @@ This is a JSON almost-equivalent - I've tried to indent is as readably as I can:
             "Princesses -- Fiction"
         ],
         "rights": "http://www.gutenberg.org/license",
-        "title": "A Princess of Mars",
     }
 }
 ```
