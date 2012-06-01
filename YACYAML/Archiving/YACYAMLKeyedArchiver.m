@@ -114,6 +114,11 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     yaml_emitter_t emitter;
     yaml_emitter_initialize(&emitter);
     
+    // Wonder should expose some of these options should be exposed?
+    yaml_emitter_set_encoding(&emitter, YAML_UTF8_ENCODING);
+    yaml_emitter_set_unicode(&emitter, 1);
+    yaml_emitter_set_width(&emitter, 72);
+    
     yaml_emitter_set_output(&emitter, EmitToNSMutableData, (__bridge void *)_dataForWriting);
     
     yaml_event_t event;

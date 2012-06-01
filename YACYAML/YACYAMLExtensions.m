@@ -12,12 +12,12 @@
 
 @implementation NSObject (YACYAMLExtensions)
 
-- (NSString *)YACYAMLArchiveString
+- (NSString *)YACYAMLEncodedString
 {
     return [YACYAMLKeyedArchiver archivedStringWithRootObject:self];
 }
 
-- (NSData *)YACYAMLArchiveData
+- (NSData *)YACYAMLEncodedData
 {
     return [YACYAMLKeyedArchiver archivedDataWithRootObject:self];
 }
@@ -27,17 +27,17 @@
             
 @implementation NSString (YACYAMLExtensions)
 
-- (id)YACYAMLUnarchive
+- (id)YACYAMLDecode
 {
-    return [self YACYAMLUnarchiveBasic];
+    return [self YACYAMLDecodeBasic];
 }
 
-- (id)YACYAMLUnarchiveBasic
+- (id)YACYAMLDecodeBasic
 {
     return [YACYAMLKeyedUnarchiver unarchiveObjectWithString:self options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder];
 }
 
-- (id)YACYAMLUnarchiveAll
+- (id)YACYAMLDecodeAll
 {
     return [YACYAMLKeyedUnarchiver unarchiveObjectWithString:self];
 }
@@ -47,17 +47,17 @@
             
 @implementation NSData (YACYAMLExtensions)
 
-- (id)YACYAMLUnarchive
+- (id)YACYAMLDecode
 {
-    return [self YACYAMLUnarchiveBasic];
+    return [self YACYAMLDecodeBasic];
 }
 
-- (id)YACYAMLUnarchiveBasic
+- (id)YACYAMLDecodeBasic
 {
     return [YACYAMLKeyedUnarchiver unarchiveObjectWithData:self options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder];
 }
 
-- (id)YACYAMLUnarchiveAll
+- (id)YACYAMLDecodeAll
 {
     return [YACYAMLKeyedUnarchiver unarchiveObjectWithData:self];
 }

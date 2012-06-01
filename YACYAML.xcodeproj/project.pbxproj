@@ -70,6 +70,7 @@
 /* Begin PBXFileReference section */
 		7D19B16B15753C8C00861783 /* YACYAMLUnarchivingExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLUnarchivingExtensions.h; sourceTree = "<group>"; };
 		7D19B16C15753C8D00861783 /* YACYAMLUnarchivingExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLUnarchivingExtensions.m; sourceTree = "<group>"; };
+		7D1D21621577E94E00AB7951 /* ReadMe.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ReadMe.md; sourceTree = "<group>"; wrapsLines = 1; };
 		7D2A83F61565461E00E914ED /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
 		7D2A83FB1566672600E914ED /* YACYAMLArchivingObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLArchivingObject.h; sourceTree = "<group>"; };
 		7D2A83FC1566672600E914ED /* YACYAMLArchivingObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLArchivingObject.m; sourceTree = "<group>"; };
@@ -80,7 +81,7 @@
 		7D5A0FA01577CFA5005DAB82 /* YACYAMLExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLExtensions.h; sourceTree = "<group>"; };
 		7D5A0FA11577CFA5005DAB82 /* YACYAMLExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAMLExtensions.m; sourceTree = "<group>"; };
 		7D63EEDF156D8EF700F030FD /* libresolv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libresolv.dylib; path = usr/lib/libresolv.dylib; sourceTree = SDKROOT; };
-		7D69F93415696A130080741C /* TODO.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODO.txt; sourceTree = "<group>"; };
+		7D69F93415696A130080741C /* ToDo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ToDo.txt; sourceTree = "<group>"; };
 		7D9D55CD1566F89200CBA9B1 /* YACYAMLKeyedArchiver_Package.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedArchiver_Package.h; sourceTree = "<group>"; };
 		7DDC030E156541F8001832F5 /* libYACYAML.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYACYAML.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DDC0311156541F8001832F5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -244,7 +245,8 @@
 		7DDC0303156541F8001832F5 = {
 			isa = PBXGroup;
 			children = (
-				7D69F93415696A130080741C /* TODO.txt */,
+				7D1D21621577E94E00AB7951 /* ReadMe.md */,
+				7D69F93415696A130080741C /* ToDo.txt */,
 				7D2A83F61565461E00E914ED /* config.h */,
 				7DE3E3B815654441006663D2 /* libYAML */,
 				7DDC0313156541F8001832F5 /* YACYAML */,

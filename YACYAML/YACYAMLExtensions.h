@@ -12,8 +12,8 @@
 
 // Will return the results of encding this object with a YACYAMLKeyedArchiver.
 // Like e.g. Ruby's "to_yaml".
-- (NSString *)YACYAMLArchiveString;
-- (NSData *)YACYAMLArchiveData;
+- (NSString *)YACYAMLEncodedString;
+- (NSData *)YACYAMLEncodedData;
 
 @end
 
@@ -23,13 +23,13 @@
 // on the contents of the string, with the 
 // YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder option turned on (so it
 // will not instantiate objects using initWithCoder:)
-- (id)YACYAMLUnarchive;
-- (id)YACYAMLUnarchiveBasic;
+- (id)YACYAMLDecode;
+- (id)YACYAMLDecodeBasic;
 
 // Will return the result of using a YACYAMLKeyedUnarchiver
 // on the contents of the string, with the defaultOptions (so it _will_
 // instantiate objects using initWithCoder:).
-- (id)YACYAMLUnarchiveAll;
+- (id)YACYAMLDecodeAll;
 
 @end
 
@@ -39,12 +39,12 @@
 // on the contents of the string, with the 
 // YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder option turned on (so it
 // will not instantiate objects using initWithCoder:)
-- (id)YACYAMLUnarchive;
-- (id)YACYAMLUnarchiveBasic;
+- (id)YACYAMLDecode;
+- (id)YACYAMLDecodeBasic;
 
 // Will return the result of using a YACYAMLKeyedUnarchiver
 // on the contents of the string, with the defaultOptions (so it _will_
 // instantiate objects using initWithCoder:).
-- (id)YACYAMLUnarchiveAll;
+- (id)YACYAMLDecodeAll;
 
 @end
