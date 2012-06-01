@@ -1,5 +1,9 @@
 # YACYAML
 
+© 2012 James Montgomerie  
+jamie@montgomerie.net, [http://www.blog.montgomerie.net/](http://www.blog.montgomerie.net/)  
+jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http://th.ingsmadeoutofotherthin.gs/)  
+
 
 ## What it is
 
@@ -26,12 +30,12 @@ Use `YACYAMLKeyedUnarchiver` to decode object graphs encoded with `YACYAMLKeyedA
 
 ## What's YACYAML's rationale?
 
-Read more at http://www.blog.montgomerie.net/yacyaml
+Read more at [http://www.blog.montgomerie.net/yacyaml](http://www.blog.montgomerie.net/yacyaml)
 
 
 ## What's YAML?
 
-YAML is a human friendly data serialization standard for all programming languages.  YAML is a friendlier superset of JSON.  YAML is easy for humans to read and write.  
+YAML is a human friendly data serialization standard.  YAML is a friendlier superset of JSON.  YAML is easy for humans to read and write.  
 
 In spirit, YAML is to data representation what Markdown is to text markup.
 
@@ -43,7 +47,7 @@ This is a simple dctionary, represented in YAML.  It would decode as an NSDictio
 
 Just imagine how gigantic this would be as a plist.
 
-```
+```YAML
 date: 2012-04-01
 etextNumber: 62
 title: A Princess of Mars
@@ -108,11 +112,10 @@ YACYAML uses YAML's 'anchors' to store repeated objects only once, and refer to 
 
 ## YACYAML?
 
-YACYAML stood for "Yet Another Cocoa YAML", but I think it deserves better than that now.
+YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than that now.
 
 
 ## Thanks to
 
-The creators of YAML.
-<i>why the lucky stiff</i> for his <i>Syck</i> YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
-Kirill Simonov for libyaml, which YACYAML is based on, and without which I don't think I'd have contemplated this.
+_why the lucky stiff_for his _Syck_ YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
+Kirill Simonov for [libyaml](http://pyyaml.org/wiki/LibYAML), which YACYAML uses to parse and emit raw YAML, and without which I don't think I'd have contemplated this.
