@@ -115,6 +115,12 @@
             _representedObject = scalarString;
         }
     }
+    
+    const char *anchor = (const char *)event->data.scalar.anchor;
+    if(anchor) {
+        [_unarchiver setUnrchivingObject:self
+                               forAnchor:[NSString stringWithUTF8String:anchor]];
+    }
 }
 
 
