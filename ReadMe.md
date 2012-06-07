@@ -7,7 +7,7 @@ jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http:
 
 ## What it is
 
-- YACYAML reads and writes YAML, a friendier, more human, plain text replacement for plists or JSON.
+- YACYAML reads and writes YAML, a friendlier, more human, plain text replacement for plists or JSON.
 - YACYAML also works as a drop-in replacement for NSKeyedArchiver and NSKeyedUnarchiver in most situations, and writes a human-readable, less proprietary format.
 - YACYAML is for iOS and Mac OS X.
 
@@ -210,7 +210,7 @@ The short version of how to set up your iOS or Mac project to build and use YACY
     - Under _Link Binary With Libraries_, press the '+' button, and add _libresolv.dylib_ from your target SDK (libresolv provides Base64 encoding, used by YACYAML when reading and writing NSData objects).
 - In your app's target settings, in the _Build Settings_ section:
     - Make sure _All_, not _Basic_ is selected at the top.
-    - On the _Header Saearch Paths_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"` (make sure to include the quotes!)
+    - On the _Header Search Paths_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"` (make sure to include the quotes!)
     - On the _Other Linker Flags_ line, make sure the flags `-ObjC` and `-all_load` are there (add them if they're not).
 - When you want to use YACYAML, just `#import <YACYAML/YACYAML.h>`.
 
