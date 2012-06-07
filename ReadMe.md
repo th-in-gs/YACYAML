@@ -7,7 +7,7 @@ jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http:
 
 ## What it is
 
-- YACYAML reads and writes YAML, a friendier, more human, replacement for plists or JSON.
+- YACYAML reads and writes YAML, a friendier, more human, plain text replacement for plists or JSON.
 - YACYAML also works as a drop-in replacement for NSKeyedArchiver and NSKeyedUnarchiver in most situations, and writes a human-readable, less proprietary format.
 - YACYAML is for iOS and Mac OS X.
 
@@ -21,14 +21,14 @@ jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http:
 
 ## How to use YACYAML
 
-- Use `YACYAMLKeyedUnarchiver` fo read YAML files, or the `YACYAMLDecodeAll` methods on `NSString` or `NSData` objects holding YAML strings to decode them.
+- Use `YACYAMLKeyedUnarchiver` to read YAML, or the `-YACYAMLDecode` methods on `NSString` or `NSData` objects holding YAML strings to decode them.
 - Call `-YACYAMLEncodedString` (or `-YACYAMLEncodedData`) on Cocoa objects to get a plain-text YAML encoding.  It'll work on all objects you could store in a plist or in JSON, and any others that support `NSCoding`.
 - Use `YACYAMLKeyedArchiver` to encode object graphs, as a replacement for `NSKeyedArchiver`.  
 - Use `YACYAMLKeyedUnarchiver` to decode object graphs encoded with `YACYAMLKeyedArchiver`.   `YACYAMLKeyedUnarchiver` is to `YACYAMLKeyedArchiver` as `NSKeyedUnarchiver` is to `NSKeyedArchiver`.
 - See below for how to compile and link YACYAML into your Mac or iOS project.
 
 
-## What's YACYAML's rationale?
+## What's YACYAML's rataionale?
 
 Read more at [http://www.blog.montgomerie.net/yacyaml](http://www.blog.montgomerie.net/yacyaml)
 
@@ -37,7 +37,7 @@ Read more at [http://www.blog.montgomerie.net/yacyaml](http://www.blog.montgomer
 
 YAML is a human friendly data serialization standard.  YAML is a friendlier superset of JSON.  YAML is easy for humans to read and write.  
 
-In spirit, YAML is to data representation what Markdown is to text markup.
+In spirit, YAML is sort of to data representation what Markdown is to text markup.
 
 
 
@@ -104,7 +104,7 @@ This is a JSON almost-equivalent - I've tried to indent is as readably as I can:
             ],
           "extent": 148804
         },
-        "language": "en"
+        "language": "en",
         "lcc": "PS",
         "lcsh": [
             "Science fiction",
@@ -113,7 +113,7 @@ This is a JSON almost-equivalent - I've tried to indent is as readably as I can:
             "Mars (Planet) -- Fiction",
             "Princesses -- Fiction"
         ],
-        "rights": "http://www.gutenberg.org/license",
+        "rights": "http://www.gutenberg.org/license"
     }
 }
 ```
@@ -154,7 +154,7 @@ threekey: three
 You could also write, for example, `{ onekey: one, twoKey: two, threeKey: three }`
 
 
-And, to show that this can indeed archive arbitrary Cocoa objects (that implement `NSCoder`), here's a good old Mac OS NSButton.  You wouldn't, of course, write this by hand, but I think there's value in having it stored in a human-readable format rather than what NSKeyedArchiver emits.
+And, to show that this can indeed archive arbitrary Cocoa objects (that implement NSCoder), here's a good old Mac OS NSButton.  You wouldn't, of course, write this by hand, but I think there's value in having it stored in a human-readable format rather than what NSKeyedArchiver emits.
 
 ```ObjC
 NSButton *button = [[NSButton alloc] initWithFrame:NSMakeRect(20, 20, 400, 50)];
@@ -205,19 +205,14 @@ The short version of how to set up your iOS or Mac project to build and use YACY
 - Copy the YACYAML directory into, or (better) clone a YACYAML repository as a Git submodule in, your app project's directory hierarchy somewhere.
 - In your app's Xcode project, drag the YACYAML.project into the navigator tree on the left.
 - In your app's Xcode target settings, in the _Build Phases_ section:
--- Under _Target Dependencies_, press the '+' button, and add the _YACYAML_ target from the _YACYAML_ project.
--- Under _Link Binary With Libraries_, press the '+' button, and add _libYACYAML.a_ the _YACYAML_ project.
--- Under _Link Binary With Libraries_, press the '+' button, and add _libresolv.dylib_ from your target SDK (libresolv provides Base64 encoding, used by YACYAML when reading and writing NSData objects).
+    - Under _Target Dependencies_, press the '+' button, and add the _YACYAML_ target from the _YACYAML_ project.
+    - Under _Link Binary With Libraries_, press the '+' button, and add _libYACYAML.a_ the _YACYAML_ project.
+    - Under _Link Binary With Libraries_, press the '+' button, and add _libresolv.dylib_ from your target SDK (libresolv provides Base64 encoding, used by YACYAML when reading and writing NSData objects).
 - In your app's target settings, in the _Build Settings_ section:
--- Make sure _All_, not _Basic_ is selected at the top.
--- On the _Header Saearch Paths_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"` (make sure to include the quotes!)
--- On the _Other Linker Flags_ line, make sure the flags `-ObjC` and `-all_load` are there (add them if they're not).
+    - Make sure _All_, not _Basic_ is selected at the top.
+    - On the _Header Saearch Paths_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"` (make sure to include the quotes!)
+    - On the _Other Linker Flags_ line, make sure the flags `-ObjC` and `-all_load` are there (add them if they're not).
 - When you want to use YACYAML, just `#import <YACYAML/YACYAML.h>`.
-
-
-## YACYAML?
-
-YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than that now.
 
 
 ## How much YAML does this support?
@@ -225,20 +220,36 @@ YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than 
 It should hopefully parse everything 'sensibly', but specific mappings from/to Cocoa objects (and C basic types, when using the appropriate NSCoder methods) to/from [YAML language-independent types](http://yaml.org/type/) exist for:
 
 ### Collections
-- Sequences (`!!seq`) to/from `NSArray`s
-- Mappings (`!!map`) to/from `NSDictionary`s
-- Sets (`!!set`) to/from `NSSet`s
+- Sequences ([`!!seq`](http://yaml.org/type/seq.html)) to/from `NSArray`s
+- Mappings ([`!!map`](http://yaml.org/type/map.html)) to/from `NSDictionary`s
+- Sets ([`!!set`](http://yaml.org/type/set.html)) to/from `NSSet`s
 
 ### Scalars
-- Strings (`!!str`) to/from `NSString`s
-- Numbers and booleans (`!!int`, `!!float`, `!!bool`) to/from `NSNumbers`s (and equivalent basic types).
-- Timestamps (`!!timestamp`) to/from `NSDate`s
-- Binary data (`!!data`) to/from `NSData`s
-- Null (`!!null`) to/from `NSNull`
+- Strings ([`!!str`](http://yaml.org/type/str.html)) to/from `NSString`s
+- Numbers and booleans ([`!!int`](http://yaml.org/type/int.html), [`!!float`](http://yaml.org/type/float.html), [`!!bool`](http://yaml.org/type/bool.html)) to/from `NSNumbers`s (and equivalent basic types).
+- Timestamps ([`!!timestamp`](http://yaml.org/type/timestamp.html)) to/from `NSDate`s
+- Binary data ([`!!binary`](http://yaml.org/type/binary.html)) to/from `NSData`s
+- Null ([`!!null`](http://yaml.org/type/null.html)) to/from `NSNull`
+
+### Unsupported
+- Pairs ([`!!pairs`](http://yaml.org/type/pairs.html))
+    - You'll get an array of dictionaries containing one key and value each (this is actually compliant with the spec, given that Cocoa has no pair class).
+- Ordered mappings ([`!!omap`](http://yaml.org/type/omap.html))
+    - You'll get an ordered array of dictionaries containing one key and value each (this is, again, compliant with the spec given that Cocoa has no ordered mapping class).
+- Merging of mappings ([`!!merge`](http://yaml.org/type/merge.html))
+    - You'll get mappings with a '<<' key representing the merge.
+- Default values for mappings ([`!!value`](http://yaml.org/type/value.html))
+    - You'll get mappings with '=' key representing the default value. This may be spec-compliant, depending on how you think about default values.
+- YAML in YAML ([`!!yaml`](http://yaml.org/type/yaml.html))
+
+
+## YACYAML?
+
+YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than that now.
 
 
 ## Thanks to
 
-- _why the lucky stiff_for his _Syck_ YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
+- _why the lucky stiff_ for his _Syck_ YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
 - Kirill Simonov for [libyaml](http://pyyaml.org/wiki/LibYAML), which YACYAML uses to parse and emit raw YAML, and without which I don't think I'd have contemplated this.
-- Mike Ash for his old MAKeyedArchiver, which illuminated some things, and made me feel not so bad about how this decodes object cycles.
+- [Mike Ash](http://mikeash.com/) for his old MAKeyedArchiver, which illuminated some things, and made me feel not so bad about how this decodes object cycles.

@@ -612,6 +612,42 @@
 }
 
 
+- (void)testMergeParsing
+{
+    NSString *yaml = 
+    @"---\n"
+    @"- &CENTER { x: 1, y: 2 }\n"
+    @"- &LEFT { x: 0, y: 2 }\n"
+    @"- &BIG { r: 10 }\n"
+    @"- &SMALL { r: 1 }\n"
+    @"\n"
+    @"# All the following maps are equal:\n"
+    @"\n"
+    @"- # Explicit keys\n"
+    @"  x: 1\n"
+    @"  y: 2\n"
+    @"  r: 10\n"
+    @"  label: center/big\n"
+    @"\n"
+    @"- # Merge one map\n"
+    @"  << : *CENTER\n"
+    @"  r: 10\n"
+    @"  label: center/big\n"
+    @"\n"
+    @"- # Merge multiple maps\n"
+    @"  << : [ *CENTER, *BIG ]\n"
+    @"  label: center/big\n"
+    @"\n"
+    @"- # Override\n"
+    @"  << : [ *BIG, *LEFT, *SMALL ]\n"
+    @"  x: 1\n"
+    @"  label: center/big\n";
+    
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+
+    STAssertTrue(unarchived.count != 0, nil);
+}
+
 - (void)testYAMLExtensions
 {
     NSString *yaml = 
