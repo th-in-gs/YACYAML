@@ -28,7 +28,7 @@ jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http:
 - See below for how to compile and link YACYAML into your Mac or iOS project.
 
 
-## What's YACYAML's rataionale?
+## What's YACYAML's rationale?
 
 Read more at [http://www.blog.montgomerie.net/yacyaml](http://www.blog.montgomerie.net/yacyaml)
 
