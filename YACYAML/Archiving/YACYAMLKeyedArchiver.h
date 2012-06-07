@@ -14,8 +14,8 @@ typedef enum YACYAMLKeyedArchiverOptions {
     /*
      I'd like to implement this, and make it the default for the simple
      -YACYCAMLEncodedString and -YACYAMLEncodedData methods, but I can't
-     work out a safe way to do it given that keys can me arbitray objects
-     of arbitraty classes, and might not implement -compare:, and even
+     work out a safe way to do it given that keys can me arbitrary objects
+     of arbitrary classes, and might not implement -compare:, and even
      if they do, might not be comparabe to other keys.
      
     // Order output mapping elements by key, for human-readabiliy.
@@ -76,12 +76,10 @@ typedef enum YACYAMLKeyedArchiverOptions {
 // appropriate.
 @property (nonatomic, weak, readonly) NSString *YACYAMLArchivingTag;
 
-// Can the tag be skipped in output for this object if it's in the non-quoted
-// style?
+// YES if the tag be skipped in non-quoted style output for this object.
 @property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBePlainImplicit;
 
-// Can the tag be skipped in output for this object if it's in the quoted
-// style?
+// YES if the tag be skipped in quoted style output for this object.
 @property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBeQuotedImplicit;
 
 
@@ -100,6 +98,6 @@ typedef enum YACYAMLKeyedArchiverOptions {
 // Will be called in place of encodeWithCoder:, if it's implemented.
 // For example, an NSNumber category overrides this to convert numbers to 
 // YAML-spec-compliant string representations.
-- (NSString*)YACYAMLScalarString; 
+- (NSString *)YACYAMLScalarString; 
 
 @end
