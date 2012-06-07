@@ -386,7 +386,6 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
 
 - (id)initWithYACYAMLScalarString:(NSString *)string
 {
-    NSLog(@"%@", string);
     NSDateComponents *dateComponents = [[NSDateComponents alloc] init];
     
     NSTextCheckingResult *ymdMatch = [YACYAMLTimestampYMDRegularExpression() firstMatchInString:string  
