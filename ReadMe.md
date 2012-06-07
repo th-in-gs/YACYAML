@@ -220,7 +220,25 @@ The short version of how to set up your iOS or Mac project to build and use YACY
 YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than that now.
 
 
+## How much YAML does this support?
+
+It should hopefully parse everything 'sensibly', but specific mappings from/to Cocoa objects (and C basic types, when using the appropriate NSCoder methods) to/from [YAML language-independent types](http://yaml.org/type/) exist for:
+
+### Collections
+- Sequences (`!!seq`) to/from `NSArray`s
+- Mappings (`!!map`) to/from `NSDictionary`s
+- Sets (`!!set`) to/from `NSSet`s
+
+### Scalars
+- Strings (`!!str`) to/from `NSString`s
+- Numbers and booleans (`!!int`, `!!float`, `!!bool`) to/from `NSNumbers`s (and equivalent basic types).
+- Timestamps (`!!timestamp`) to/from `NSDate`s
+- Binary data (`!!data`) to/from `NSData`s
+- Null (`!!null`) to/from `NSNull`
+
+
 ## Thanks to
 
 - _why the lucky stiff_for his _Syck_ YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
 - Kirill Simonov for [libyaml](http://pyyaml.org/wiki/LibYAML), which YACYAML uses to parse and emit raw YAML, and without which I don't think I'd have contemplated this.
+- Mike Ash for his old MAKeyedArchiver, which illuminated some things, and made me feel not so bad about how this decodes object cycles.

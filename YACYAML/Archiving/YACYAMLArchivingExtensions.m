@@ -166,6 +166,81 @@
 @end
 
 
+@implementation NSDate (YACYAMLArchivingExtensions)
+
+- (BOOL)YACYAMLArchivingTagCanBePlainImplicit
+{
+    return YES;
+}
+
+- (BOOL)YACYAMLArchivingTagCanBeQuotedImplicit
+{
+    return NO;
+}
+
+- (NSString *)YACYAMLArchivingTag
+{
+    return @"tag:yaml.org,2002:timestamp";
+}
+
+- (NSString *)YACYAMLScalarString
+{
+    NSString *ret = nil;
+    
+    NSUInteger units =  NSYearCalendarUnit | 
+                        NSMonthCalendarUnit |  
+                        NSDayCalendarUnit | 
+                        NSHourCalendarUnit | 
+                        NSMinuteCalendarUnit | 
+                        NSSecondCalendarUnit |
+                        NSTimeZoneCalendarUnit;
+    
+    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+    calendar.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+     
+    NSDateComponents *components = [calendar components:units fromDate:self];
+    
+    long year =   [components year];
+    long month =  [components month];
+    long day =    [components day];
+    
+    long hour =   [components hour];
+    long minute = [components minute];
+    long second = [components second];
+
+    NSTimeZone *timeZone = components.timeZone;
+    long timeZoneOffset = timeZone.secondsFromGMT;
+
+    NSString *dateString = [NSString stringWithFormat:@"%04ld-%02ld-%02ld", year, month, day];
+
+    if(hour == 0 && minute == 0 && second == 0 && 
+       timeZoneOffset == 0) {
+     
+        ret = dateString;
+    } else {
+        NSMutableString *buildTimestamp = [dateString mutableCopy];
+        [buildTimestamp appendFormat:@"T%02ld:%02ld:%02ld", hour, minute, second];
+        
+        double fraction = modf([self timeIntervalSinceReferenceDate], (double[]){0.0});
+        if(fraction) {
+            [buildTimestamp appendFormat:@".%ld", (long)round(fraction * 1000.0)];
+        }
+        
+        if(timeZoneOffset == 0) {
+            [buildTimestamp appendString:@"Z"];
+        } else {
+            [buildTimestamp appendFormat:@"%+02ld:%02ld", timeZoneOffset / 3600, (timeZoneOffset / 60) % 60];
+        }
+    
+        ret = buildTimestamp;
+    }
+    
+    return ret;
+}
+
+@end
+
+
 
 @implementation NSArray (YACYAMLArchivingExtensions) 
 

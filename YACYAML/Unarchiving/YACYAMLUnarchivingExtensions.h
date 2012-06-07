@@ -13,6 +13,9 @@ void YACYAMLUnarchivingExtensionsRegister(void);
 @interface NSNumber (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingScalar>
 @end
 
+@interface NSDate (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingScalar>
+@end
+
 @interface NSData (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingScalar>
 @end
 

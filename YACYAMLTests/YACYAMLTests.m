@@ -573,6 +573,45 @@
 }
 
 
+- (void)testDateParsing
+{
+    NSString *yaml = 
+    @"canonical:           2001-12-15T02:59:43.1Z\n"
+    @"valid iso8601:       2001-12-14t21:59:43.10-05:00\n"
+    @"space separated:     2001-12-14 21:59:43.10 -5\n"
+    @"no time zone (Z):    2001-12-15 2:59:43.10\n"
+    @"half hour time zone: 2001-12-15 3:29:43.10+00:30\n"
+    @"date (00:00:00Z):    2002-12-14";
+    
+    NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+    
+    for(NSNumber *number in [[[unarchivedDictionary objectEnumerator] allObjects] valueForKey:@"timeIntervalSince1970"]) {
+        STAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
+                     number.doubleValue == 1039824000,     // 2002-12-14
+                     nil);
+    }
+}   
+
+- (void)testDateArchiving
+{
+    NSArray *testArray = [NSArray arrayWithObjects:[NSDate dateWithTimeIntervalSince1970:1039824000],
+                                                   [NSDate dateWithTimeIntervalSince1970:1008385183.1],
+                                                    nil];
+    
+    NSString *string = [YACYAMLKeyedArchiver archivedStringWithRootObject:testArray];
+    
+    STAssertTrue(string.length != 0, nil);
+    
+    NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:string];
+    
+    for(NSNumber *number in [unarchivedArray  valueForKey:@"timeIntervalSince1970"]) {
+        STAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
+                     number.doubleValue == 1039824000,     // 2002-12-14
+                     nil);
+    }
+}
+
+
 - (void)testYAMLExtensions
 {
     NSString *yaml = 

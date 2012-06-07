@@ -19,6 +19,9 @@
 @interface NSNumber (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
 @end
 
+@interface NSDate (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
+@end
+
 
 @interface NSArray (YACYAMLArchivingExtensions) <YACYAMLArchivingCustomEncoding>
 @end

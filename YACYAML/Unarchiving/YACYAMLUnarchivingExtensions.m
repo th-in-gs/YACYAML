@@ -22,6 +22,7 @@ void YACYAMLUnarchivingExtensionsRegister(void)
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSMutableArray class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSMutableDictionary class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSMutableSet class]];
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSDate class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSData class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSNull class]];
 }
@@ -307,6 +308,142 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
         NSLog(@"Warning: Could not parse string \"%@\" to NSNumber, using string as-is", string);
         return (NSNumber *)string;
     }
+}
+
+@end
+
+
+@implementation NSDate (YACYAMLUnarchivingExtensions)
+
++ (NSArray *)YACYAMLUnarchivingTags
+{
+    return [[NSArray alloc] initWithObjects:
+            @"tag:yaml.org,2002:timestamp",
+            nil];
+}
+
+static NSRegularExpression *YACYAMLTimestampYMDRegularExpression(void)
+{
+    // http://yaml.org/type/timestamp.html
+    // [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] # (ymd)
+    
+    static NSRegularExpression *expression;
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        expression = [NSRegularExpression regularExpressionWithPattern:@"^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$"
+                                                               options:0 
+                                                                 error:nil];        
+    });
+    
+    return expression;
+}
+
+static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
+{
+    // http://yaml.org/type/timestamp.html
+    // [0-9][0-9][0-9][0-9] # (year)
+    // -[0-9][0-9]? # (month)
+    // -[0-9][0-9]? # (day)
+    // ([Tt]|[ \t]+)[0-9][0-9]? # (hour)
+    // :[0-9][0-9] # (minute)
+    // :[0-9][0-9] # (second)
+    // (\.[0-9]*)? # (fraction)
+    // (([ \t]*)Z|[-+][0-9][0-9]?(:[0-9][0-9])?)? # (time zone)
+
+    
+    static NSRegularExpression *expression;
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        expression = [NSRegularExpression regularExpressionWithPattern:@"^"
+                      "([0-9][0-9][0-9][0-9])"                           // (year)
+                      "-([0-9][0-9]?)"                                   // (month)
+                      "-([0-9][0-9]?)"                                   // (day)
+                      "(([Tt]|[ \\t]+)([0-9][0-9]?))"                    // (hour)
+                      ":([0-9][0-9])"                                    // (minute)
+                      ":([0-9][0-9])"                                    // (second)
+                      "(\\.[0-9]*)?"                                     // (fraction)
+                      "(([ \t]*)(Z|([-+][0-9][0-9]?)(:([0-9][0-9]))?))?" // (time zone)
+                      "$"
+                                                               options:0 
+                                                                 error:nil];        
+    });
+    
+    return expression;
+}
+
+
++ (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
+{
+    return [YACYAMLTimestampYMDRegularExpression() rangeOfFirstMatchInString:scalarString
+                                                                     options:0
+                                                                       range:NSMakeRange(0, scalarString.length)].location != NSNotFound ||
+           [YACYAMLTimestampComplicatedRegularExpression() rangeOfFirstMatchInString:scalarString
+                                                                             options:0
+                                                                               range:NSMakeRange(0, scalarString.length)].location != NSNotFound;
+}
+
+- (id)initWithYACYAMLScalarString:(NSString *)string
+{
+    NSLog(@"%@", string);
+    NSDateComponents *dateComponents = [[NSDateComponents alloc] init];
+    
+    NSTextCheckingResult *ymdMatch = [YACYAMLTimestampYMDRegularExpression() firstMatchInString:string  
+                                                                                        options:0
+                                                                                          range:NSMakeRange(0, string.length)];
+    
+    NSTimeInterval secondsFraction = 0;
+    
+    if(ymdMatch) {
+        dateComponents.year =  [[string substringWithRange:[ymdMatch rangeAtIndex:1]] integerValue];
+        dateComponents.month = [[string substringWithRange:[ymdMatch rangeAtIndex:2]] integerValue];
+        dateComponents.day =   [[string substringWithRange:[ymdMatch rangeAtIndex:3]] integerValue];
+        dateComponents.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+    } else {
+         NSTextCheckingResult *match = [YACYAMLTimestampComplicatedRegularExpression() firstMatchInString:string  
+                                                                                                     options:0
+                                                                                                    range:NSMakeRange(0, string.length)];
+        
+        dateComponents.year =    [[string substringWithRange:[match rangeAtIndex:1]] integerValue];
+        dateComponents.month =   [[string substringWithRange:[match rangeAtIndex:2]] integerValue];
+        dateComponents.day =     [[string substringWithRange:[match rangeAtIndex:3]] integerValue];
+        dateComponents.hour =    [[string substringWithRange:[match rangeAtIndex:6]] integerValue];
+        dateComponents.minute =  [[string substringWithRange:[match rangeAtIndex:7]] integerValue];
+        dateComponents.second =  [[string substringWithRange:[match rangeAtIndex:8]] integerValue];
+        
+        NSRange secondsFractionRange = [match rangeAtIndex:9];
+        if(secondsFractionRange.length) {
+            secondsFraction = [[string substringWithRange:secondsFractionRange] doubleValue]; 
+        }
+        
+        NSInteger secondsFromGMT = 0;
+        if([match rangeAtIndex:10].length) {
+            NSRange timeZoneHoursOffsetRange = [match rangeAtIndex:13];
+
+            if(timeZoneHoursOffsetRange.length) {
+                NSInteger timeZoneHoursOffset = [[string substringWithRange:timeZoneHoursOffsetRange] integerValue];
+
+                secondsFromGMT = timeZoneHoursOffset * 60 * 60;
+                
+                NSRange timeZoneMinutesOffsetRange = [match rangeAtIndex:15];
+                if(timeZoneMinutesOffsetRange.length) {
+                    NSInteger timeZoneMinutesOffset = [[string substringWithRange:timeZoneMinutesOffsetRange] integerValue];
+                    secondsFromGMT += timeZoneMinutesOffset * 60;
+                }
+            } 
+        } 
+        dateComponents.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:secondsFromGMT];
+    }
+    
+    NSCalendar *calender = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+    calender.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+    
+    NSDate *ret = [calender dateFromComponents:dateComponents];
+    if(secondsFraction) {
+        ret = [ret dateByAddingTimeInterval:secondsFraction];
+    }
+    return ret;
 }
 
 @end
