@@ -199,9 +199,9 @@ YACYAML uses YAML's 'anchors' to store repeated objects only once, and refer to 
 
 ## How to use YACYAML in your iOS or Mac project
 
-YACYAML is designed to be built as an static library and used directly by Xcode, as a subproject to an your project.  (like [this](http://www.blog.montgomerie.net/easy-xcode-static-library-subprojects-and-submodules)).
+YACYAML is designed to be built as an static library and used directly by Xcode, as a subproject to your project.  (like [this](http://www.blog.montgomerie.net/easy-xcode-static-library-subprojects-and-submodules)).  It should work correctly on any OS that supports Automatic Reference Counting (your project doesn't need to use ARC itself though - non-ARC code interoperates perfectly well with libraries that use it).
 
-The short version of how to set up your iOS or Mac project to build and use YACYAML:
+How to set up your iOS or Mac project to build and use YACYAML:
 - Copy the YACYAML directory into, or (better) clone a YACYAML repository as a Git submodule in, your app project's directory hierarchy somewhere.
 - In your app's Xcode project, drag the YACYAML.project into the navigator tree on the left.
 - In your app's Xcode target settings, in the _Build Phases_ section:
@@ -212,6 +212,7 @@ The short version of how to set up your iOS or Mac project to build and use YACY
     - Make sure _All_, not _Basic_ is selected at the top.
     - On the _Header Search Paths_ line, add `"$(TARGET_BUILD_DIR)/usr/local/lib/include"` and `"$(OBJROOT)/UninstalledProducts/include"` (make sure to include the quotes!)
     - On the _Other Linker Flags_ line, make sure the flags `-ObjC` and `-all_load` are there (add them if they're not).
+    - If your project's not already using ARC, you'll also need to add `-fobjc-arc` to the _Other Linker Flags_ (don't worry, that won't make Xcode think your project is using ARC too, it just links in the required support libraries for it so that YACYAML can use it).
 - When you want to use YACYAML, just `#import <YACYAML/YACYAML.h>`.
 
 
