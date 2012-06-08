@@ -20,7 +20,7 @@
         
     NSArray *_unkeyedChildren;
     NSDictionary *_keyedChildren;
-    
+        
     NSUInteger _unkeyedChildIndex;
     
     id _representedObject;
@@ -118,8 +118,8 @@
     
     const char *anchor = (const char *)event->data.scalar.anchor;
     if(anchor) {
-        [_unarchiver setUnrchivingObject:self
-                               forAnchor:[NSString stringWithUTF8String:anchor]];
+        [_unarchiver setUnarchivingObject:self
+                                forAnchor:[NSString stringWithUTF8String:anchor]];
     }
 }
 
@@ -190,8 +190,8 @@
         // bet that none do though).  Perhaps a similar delegate method
         // could be implemented in the future for this.
         
-        [_unarchiver setUnrchivingObject:self
-                               forAnchor:anchorString];
+        [_unarchiver setUnarchivingObject:self
+                                forAnchor:anchorString];
     }
     
     if(type == YAML_MAPPING_START_EVENT) {

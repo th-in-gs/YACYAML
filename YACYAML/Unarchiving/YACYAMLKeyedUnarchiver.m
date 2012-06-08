@@ -254,8 +254,8 @@ NSMutableArray *sImplicitScalarClasses = nil;
 }
 
 
-- (void)setUnrchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
-                  forAnchor:(NSString *)anchor
+- (void)setUnarchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
+                   forAnchor:(NSString *)anchor
 {
     [_anchoredObjects setObject:unarchivingObject forKey:anchor];
 }

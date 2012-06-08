@@ -11,8 +11,8 @@ struct yaml_parser_s;
 
 @interface YACYAMLKeyedUnarchiver ()
 
-- (void)setUnrchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
-                  forAnchor:(NSString *)anchor;
+- (void)setUnarchivingObject:(YACYAMLUnarchivingObject *)unarchivingObject
+                   forAnchor:(NSString *)anchor;
 - (YACYAMLUnarchivingObject *)previouslyInstantiatedUnarchivingObjectForAnchor:(NSString *)anchor;
 
 - (void)pushUnarchivingObject:(YACYAMLUnarchivingObject *)archivingObject;
