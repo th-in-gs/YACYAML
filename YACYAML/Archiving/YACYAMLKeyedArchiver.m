@@ -91,17 +91,23 @@
     _archivingObjectStack = [[NSMutableArray alloc] init];
     [_archivingObjectStack addObject:_rootObject];
     
+    // Don't retain the key here - it's the representedObject that's stored
+    // in the YACYAMLArchivingObject that's the value.
+    // Also, set up the equality and hash operations to the correct thing
+    // to implements the user's choice of using object equality 
+    // vs pointer equality (via the
+    // YACYAMLKeyedArchiverOptionDontUseObjectEquality option).
     _archivedObjectToItem = CFDictionaryCreateMutable(kCFAllocatorDefault,
                                                       0,
                                                       &(const CFDictionaryKeyCallBacks) {
                                                           0,
-                                                          kCFTypeDictionaryKeyCallBacks.retain,
-                                                          kCFTypeDictionaryKeyCallBacks.release,
+                                                          NULL,
+                                                          NULL,
                                                           kCFTypeDictionaryKeyCallBacks.copyDescription,
                                                           (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
-                                                            nil : kCFTypeDictionaryKeyCallBacks.equal,
+                                                            NULL : kCFTypeDictionaryKeyCallBacks.equal,
                                                           (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
-                                                            nil : kCFTypeDictionaryKeyCallBacks.hash,
+                                                            NULL : kCFTypeDictionaryKeyCallBacks.hash,
                                                       },
                                                       &kCFTypeDictionaryValueCallBacks);
     
