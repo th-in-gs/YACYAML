@@ -93,9 +93,9 @@
         NSString *tagString = [NSString stringWithUTF8String:(const char *)event->data.scalar.tag];
         representedClass = [[_unarchiver class] classForYAMLTag:tagString];
         if(representedClass) {
-            if([representedClass instancesRespondToSelector:@selector(initWithYACYAMLScalarUTF8String:length:)]) {
-                _representedObject = [[representedClass alloc] initWithYACYAMLScalarUTF8String:(const char *)event->data.scalar.value
-                                                                                        length:event->data.scalar.length];
+            if([representedClass respondsToSelector:@selector(objectWithYACYAMLScalarUTF8String:length:)]) {
+                _representedObject = [representedClass objectWithYACYAMLScalarUTF8String:(const char *)event->data.scalar.value
+                                                                                  length:event->data.scalar.length];
             }
         }
     }
@@ -109,8 +109,8 @@
             representedClass = [[_unarchiver class] classForYAMLScalarString:scalarString];
         }
 
-        if([representedClass instancesRespondToSelector:@selector(initWithYACYAMLScalarString:)]) {
-            _representedObject = [[representedClass alloc] initWithYACYAMLScalarString:scalarString];
+        if([representedClass respondsToSelector:@selector(objectWithYACYAMLScalarString:)]) {
+            _representedObject = [representedClass objectWithYACYAMLScalarString:scalarString];
         } else {
             _representedObject = scalarString;
         }
@@ -144,17 +144,17 @@
     }
     if(!representedClass) {
         if(type == YAML_MAPPING_START_EVENT) {
-            representedClass = [NSMutableDictionary class];
+            representedClass = [NSDictionary class];
         } else {
-            representedClass = [NSMutableArray class];
+            representedClass = [NSArray class];
         }
     }
     
     if(type == YAML_MAPPING_START_EVENT && 
        [representedClass instancesRespondToSelector:@selector(YACYAMLUnarchivingSetObject:forKey:)]) {
-        _representedObject = [[representedClass alloc] init];
+        _representedObject = [representedClass objectForYACYAMLUnarchiving];
     } else if([representedClass instancesRespondToSelector:@selector(YACYAMLUnarchivingAddObject:)]) {
-        _representedObject = [[representedClass alloc] init];
+        _representedObject = [representedClass objectForYACYAMLUnarchiving];
     } else {
         if(!_unarchiver.isInitWithCoderDisallowed) {
             // No init.  We'll call initWithCoder later.
@@ -163,18 +163,17 @@
             // Init with coder is disallowed.  Just present these as a simple
             // mapping or sequence in an NSDictionary or NSArray.
             if(type == YAML_MAPPING_START_EVENT) {
-                representedClass = [NSMutableDictionary class];
-                _representedObject = [[NSMutableDictionary alloc] init];
+                representedClass = [NSDictionary class];
             } else {
-                representedClass = [NSMutableArray class];
-                _representedObject = [[NSMutableDictionary alloc] init];
-            }
+                representedClass = [NSArray class];
+            }     
+            _representedObject = [representedClass objectForYACYAMLUnarchiving];
         } 
     }
     
     if(anchorString) {
         // This is an invalid thing to do if the initWithCoder later returns
-        // a different object to the one that alloc returns, but I  can't
+        // a different object to the one that alloc returns, but I can't
         // see a way to decode cyclic structures without doing it - we need
         // to be able to return a valid object for an anchor that refers to 
         // this object from 'inside' it, eve though it's not fully 

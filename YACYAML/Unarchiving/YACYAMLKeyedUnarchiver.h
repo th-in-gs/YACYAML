@@ -75,7 +75,11 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 // YACYAMLUnarchivingSetObject... instance method, below.
 + (NSArray *)YACYAMLUnarchivingTags;
 
-// Called for each decoded child of the sewuence.
+// Should construct and return an object that YACYAMLUnarchivingAddObject: can 
+// be called on to add elements.
++ (id)objectForYACYAMLUnarchiving;
+
+// Called for each decoded child of the sequence.
 - (void)YACYAMLUnarchivingAddObject:(id)object;
 
 @end
@@ -85,6 +89,14 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 
 + (NSArray *)YACYAMLUnarchivingTags;
 
+
+// Should construct and return an object that YACYAMLUnarchivingSetObject:forKey:
+// can be called on to add elements. 
++ (id)objectForYACYAMLUnarchiving;
+
+// Called for each decoded child of the sequence. For fully spec-compliant YAML
+// decoding, this should /not/ copy the keys as a normal NSDictionary's
+// setObject:forKey: would.
 - (void)YACYAMLUnarchivingSetObject:(id)object
                              forKey:(id)key;
 
@@ -114,9 +126,9 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 // category on NSNumber].
 + (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 
-// Used to initialise objects matching the YAML tag or scalars with strings
+// Used to construct objects matching the YAML tag or scalars with strings
 // matching the NSPredicate, above.
-- (id)initWithYACYAMLScalarString:(NSString *)string;
-- (id)initWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length;
++ (id)objectWithYACYAMLScalarString:(NSString *)string;
++ (id)objectWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length;
 
 @end

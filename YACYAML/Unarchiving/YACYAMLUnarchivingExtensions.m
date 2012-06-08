@@ -18,13 +18,13 @@
 
 void YACYAMLUnarchivingExtensionsRegister(void)
 {
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSArray class]];
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSDictionary class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSNumber class]];
-    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSMutableArray class]];
-    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSMutableDictionary class]];
-    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSMutableSet class]];
-    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSDate class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSData class]];
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSSet class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSNull class]];
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSDate class]];
 }
 
 @implementation NSNumber (YACYAMLUnarchivingExtensions)
@@ -156,7 +156,7 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
 }
 
 
-- (id)initWithYACYAMLScalarString:(NSString *)string
++ (id)objectWithYACYAMLScalarString:(NSString *)string
 {
     if([YACYAMLIntPredicate() evaluateWithObject:string]) {
         long long integer = 0;
@@ -221,7 +221,7 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
             }
         }
         
-        return [self initWithLongLong:integer];
+        return [NSNumber numberWithLongLong:integer];
     } else if([YACYAMLFloatPredicate() evaluateWithObject:string]) {
         const char *chars = [string UTF8String];
         const char *cursor = chars;            
@@ -291,7 +291,7 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
             }
         }
         
-        return [self initWithDouble:d];
+        return [NSNumber numberWithDouble:d];
     } else if([YACYAMLInfinityPredicate() evaluateWithObject:string]) {
         if([string characterAtIndex:0] == '-') {
             return (__bridge NSNumber *)kCFNumberNegativeInfinity;
@@ -306,7 +306,7 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
         return (__bridge NSNumber *)kCFBooleanFalse;
     } else {
         NSLog(@"Warning: Could not parse string \"%@\" to NSNumber, using string as-is", string);
-        return (NSNumber *)string;
+        return string;
     }
 }
 
@@ -384,7 +384,7 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
                                                                                range:NSMakeRange(0, scalarString.length)].location != NSNotFound;
 }
 
-- (id)initWithYACYAMLScalarString:(NSString *)string
++ (id)objectWithYACYAMLScalarString:(NSString *)string
 {
     NSDateComponents *dateComponents = [[NSDateComponents alloc] init];
     
@@ -457,7 +457,7 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
             nil];
 }
 
-- (id)initWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length
++ (id)objectWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length
 {
     NSData *decodedData = nil;
     
@@ -513,14 +513,14 @@ static NSPredicate *YACYAMLNullPredicate(void)
     return [YACYAMLNullPredicate() evaluateWithObject:scalarString];
 }
 
-- (id)initWithYACYAMLScalarString:(NSString *)string;
++ (id)objectWithYACYAMLScalarString:(NSString *)string;
 {
-    return [NSNull null];
+    return (__bridge NSNull *)kCFNull;
 }
 
 @end
 
-@implementation NSMutableArray (YACYAMLUnarchivingExtensions)
+@implementation NSArray (YACYAMLUnarchivingExtensions)
 
 + (NSArray *)YACYAMLUnarchivingTags
 {
@@ -529,14 +529,22 @@ static NSPredicate *YACYAMLNullPredicate(void)
             nil];
 }
 
++ (id)objectForYACYAMLUnarchiving
+{
+    return [[NSMutableArray alloc] init];
+}
+
 - (void)YACYAMLUnarchivingAddObject:(id)object
 {
-    [self addObject:object];
+    // Note that althouth this category is on NSArray, we know that this 
+    // instance is guaranteed to be one returned by 
+    // +objectForYACYAMLUnarchiving.
+    [(NSMutableArray *)self addObject:object];
 }
 
 @end
 
-@implementation NSMutableDictionary (YACYAMLUnarchivingExtensions)
+@implementation NSDictionary (YACYAMLUnarchivingExtensions)
 
 + (NSArray *)YACYAMLUnarchivingTags
 {
@@ -545,14 +553,37 @@ static NSPredicate *YACYAMLNullPredicate(void)
             nil];
 }
 
++ (id)objectForYACYAMLUnarchiving
+{
+    // We use a CFMutableDictionary rather than an NSMutableDictionary so that
+    // we can retain the decoded keys, rather than copying them as 
+    // NSMutableDictionary insists on.
+    // See comments below in this class's YACYAMLUnarchivingSetObject:forKey:
+    return (__bridge_transfer id)CFDictionaryCreateMutable(kCFAllocatorDefault, 
+                                                          0, 
+                                                          &kCFTypeDictionaryKeyCallBacks, 
+                                                          &kCFTypeDictionaryValueCallBacks);
+}
+
 - (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
-    [self setObject:object forKey:key];
+    // Again, using the CF method to avid NSMutableDictionary's copying of
+    // the key.  This matches the YAML spec when aliases are used as keys
+    // (the exact anchored object the alias references will be used), and also
+    // allows the use of objects that don't conform to NSCopying as keys, which 
+    // is possible in a YAML document (if not very plausible that it'll happen
+    // in real life).
+    // Note that although this category is on NSDictionary, we know that this 
+    // instance is guaranteed to be one returned by 
+    // +objectForYACYAMLUnarchiving.
+    CFDictionarySetValue((__bridge CFMutableDictionaryRef)self,
+                         (__bridge CFTypeRef)key,
+                         (__bridge CFTypeRef)object);
 }
 
 @end
 
-@implementation NSMutableSet (YACYAMLUnarchivingExtensions)
+@implementation NSSet (YACYAMLUnarchivingExtensions)
 
 + (NSArray *)YACYAMLUnarchivingTags
 {
@@ -561,10 +592,18 @@ static NSPredicate *YACYAMLNullPredicate(void)
             nil];
 }
 
++ (id)objectForYACYAMLUnarchiving
+{
+    return [[NSMutableSet alloc] init];
+}
+
 - (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
     // YAML represents sets as mappings of the contents to nil objects.
-    [self addObject:key];
+    // Note that althouth this category is on NSSet, we know that this 
+    // instance is guaranteed to be one returned by 
+    // +objectForYACYAMLUnarchiving.
+    [(NSMutableSet *)self addObject:key];
 }
 
 @end
