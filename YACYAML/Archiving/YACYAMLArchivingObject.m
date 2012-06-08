@@ -26,8 +26,14 @@
     __unsafe_unretained YACYAMLKeyedArchiver *_archiver;
     id _representedObject;
     
-    NSMutableArray *_unkeyedChildren;
-    NSMutableArray *_keyedChildren;
+    // These hold our child YACYAMLArchivingObjects.  We use CFArrays here
+    // instead of NSArrays so that we can create them with custom retain
+    // and release callbacks, so that they don't retain their contents.
+    // We can be sure that the YACYAMLKeyedArchiver is retaining the child
+    // objects, so we don't need to retain them here. By not doing so we also
+    // avoid retain cycles if the user encodes cyclic objects.
+    CFMutableArrayRef _unkeyedChildren;
+    CFMutableArrayRef _keyedChildren;
     
     BOOL _needsAnchor;
     NSString *_emittedAnchor;
@@ -44,6 +50,12 @@
         _archiver = archiver;
     }
     return self;
+}
+
+- (void)dealloc
+{
+    CFBridgingRelease(_unkeyedChildren);
+    CFBridgingRelease(_keyedChildren);
 }
 
 - (BOOL)allowsKeyedCoding
@@ -77,20 +89,37 @@
     return archivingObject;
 }
 
+static CFMutableArrayRef CreateNonRetainingArray(void)
+{
+    return CFArrayCreateMutable(kCFAllocatorDefault,
+                                0, 
+                                &(CFArrayCallBacks) {
+                                    0,
+                                    NULL,
+                                    NULL,
+                                    kCFTypeArrayCallBacks.copyDescription,
+                                    kCFTypeArrayCallBacks.equal,
+                                });
+}
+
 - (void)encodeChild:(id)obj forKey:(id)key
 {
+    // See comments above, at ivar declarations, for why we're using
+    // CFMutableArrays that don't retain their contents here insead of
+    // regular contents-retaining NSMutableArrays.
+    
     YACYAMLArchivingObject *archivingObject = [self _archivingObjectForObject:obj];
     if(key) {
         if(!_keyedChildren) {
-            _keyedChildren = [[NSMutableArray alloc] init];
+            _keyedChildren = CreateNonRetainingArray();
         }
-        [_keyedChildren addObject:[self _archivingObjectForObject:key]];
-        [_keyedChildren addObject:archivingObject];
+        CFArrayAppendValue(_keyedChildren, (__bridge CFTypeRef)[self _archivingObjectForObject:key]);
+        CFArrayAppendValue(_keyedChildren, (__bridge CFTypeRef)archivingObject);
     } else {
         if(!_unkeyedChildren) {
-            _unkeyedChildren = [[NSMutableArray alloc] init];
+            _unkeyedChildren = CreateNonRetainingArray();
         }
-        [_unkeyedChildren addObject:archivingObject];
+        CFArrayAppendValue(_unkeyedChildren, (__bridge CFTypeRef)archivingObject);
     }
 }
 
@@ -208,7 +237,7 @@
                                                          YAML_ANY_SEQUENCE_STYLE);
                     yaml_emitter_emit(emitter, &event);
                     
-                    for(YACYAMLArchivingObject *child in _unkeyedChildren) {
+                    for(YACYAMLArchivingObject *child in (__bridge NSArray *)_unkeyedChildren) {
                         [child emitWithEmitter:emitter];
                     }
                     
@@ -216,12 +245,12 @@
                     yaml_emitter_emit(emitter, &event);
                 }
                 if(_keyedChildren) {
-                    NSParameterAssert((_keyedChildren.count % 2) == 0);
+                    NSParameterAssert((CFArrayGetCount(_keyedChildren) % 2) == 0);
                     
                     // Emit the keyed children (the mapping we're emitting these
                     // into was started above, before we dealt with any
                     // potential unkeyed children).
-                    for(YACYAMLArchivingObject *key in _keyedChildren) {
+                    for(YACYAMLArchivingObject *key in (__bridge NSArray *)_keyedChildren) {
                         [key emitWithEmitter:emitter];
                     }
 
@@ -233,7 +262,7 @@
         }
     } else {
         // No represented object means we're the root of the tree.
-        for(YACYAMLArchivingObject *child in _unkeyedChildren) {
+        for(YACYAMLArchivingObject *child in (__bridge NSArray *)_unkeyedChildren) {
             yaml_document_start_event_initialize(&event, 
                                                  NULL, 
                                                  NULL, 

@@ -103,13 +103,7 @@
                                                           (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
                                                             nil : kCFTypeDictionaryKeyCallBacks.hash,
                                                       },
-                                                      &(const CFDictionaryValueCallBacks) {
-                                                          0,
-                                                          NULL,
-                                                          NULL,
-                                                          kCFTypeDictionaryValueCallBacks.copyDescription,
-                                                          NULL
-                                                      });
+                                                      &kCFTypeDictionaryValueCallBacks);
     
     _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
 }
@@ -150,7 +144,7 @@
 
 - (void)dealloc
 {
-    CFRelease(_archivedObjectToItem);
+    CFBridgingRelease(_archivedObjectToItem);
 }
 
 static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
