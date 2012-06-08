@@ -24,12 +24,12 @@ void YACYAMLUnarchivingExtensionsRegister(void);
 
 
 
-@interface NSMutableArray (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingSequence>
+@interface NSArray (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingSequence>
 @end
 
-@interface NSMutableDictionary (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingMapping>
+@interface NSDictionary (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingMapping>
 @end
 
-@interface NSMutableSet (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingMapping>
+@interface NSSet (YACYAMLUnarchivingExtensions) <YACYAMLUnarchivingMapping>
 @end
 
