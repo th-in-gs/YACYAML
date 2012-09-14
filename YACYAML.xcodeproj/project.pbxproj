@@ -733,6 +733,7 @@
 				ARCHS = (
 					armv7,
 					x86_64,
+					armv7s,
 				);
 				DSTROOT = /tmp/YACYAML.dst;
 				OTHER_LDFLAGS = (
@@ -751,6 +752,7 @@
 				ARCHS = (
 					armv7,
 					x86_64,
+					armv7s,
 				);
 				DSTROOT = /tmp/YACYAML.dst;
 				OTHER_LDFLAGS = (
@@ -803,6 +805,7 @@
 				ARCHS = (
 					armv7,
 					x86_64,
+					armv7s,
 				);
 				DSTROOT = /tmp/libYAML.dst;
 				EXECUTABLE_PREFIX = "";
@@ -823,6 +826,7 @@
 				ARCHS = (
 					armv7,
 					x86_64,
+					armv7s,
 				);
 				DSTROOT = /tmp/libYAML.dst;
 				EXECUTABLE_PREFIX = "";
