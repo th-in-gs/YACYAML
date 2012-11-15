@@ -79,6 +79,8 @@
             if(_archiver.scalarAnchorsAllowed) {
                 [_archiver pushArchivingObject:archivingObject];
                 [_archiver popArchivingObject];
+            } else {
+                [_archiver noteNonAnchoringObject:archivingObject];
             }
         } else {
             [_archiver pushArchivingObject:archivingObject];

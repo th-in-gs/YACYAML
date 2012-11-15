@@ -16,6 +16,7 @@
 
 - (void)pushArchivingObject:(YACYAMLArchivingObject *)archivingObject;
 - (void)popArchivingObject;
+- (void)noteNonAnchoringObject:(YACYAMLArchivingObject *)archivingObject;
 
 - (YACYAMLArchivingObject *)previouslySeenArchivingObjectForObject:(id)object;
 - (NSString *)generateAnchor;

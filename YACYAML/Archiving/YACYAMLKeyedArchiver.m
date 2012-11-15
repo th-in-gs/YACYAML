@@ -25,6 +25,7 @@
     NSMutableArray *_archivingObjectStack;
 
     CFMutableDictionaryRef _archivedObjectToItem;
+    NSMutableArray *_nonAnchoringObjects;
     
     NSUInteger _generatedAnchorCount;
 }
@@ -91,6 +92,7 @@
     _archivingObjectStack = [[NSMutableArray alloc] init];
     [_archivingObjectStack addObject:_rootObject];
     
+    
     // Don't retain the key here - it's the representedObject that's stored
     // in the YACYAMLArchivingObject that's the value.
     // Also, set up the equality and hash operations to the correct thing
@@ -110,6 +112,10 @@
                                                             NULL : kCFTypeDictionaryKeyCallBacks.hash,
                                                       },
                                                       &kCFTypeDictionaryValueCallBacks);
+    
+    // Use to store objects that are not allowed to be used as anchors,
+    // since they won't be retained in the _archivedObjectToItem dictionary.
+    _nonAnchoringObjects = [[NSMutableArray alloc] init];
     
     _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
 }
@@ -199,7 +205,7 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 - (void)pushArchivingObject:(YACYAMLArchivingObject *)archivingObject
 {
-    CFDictionaryAddValue(_archivedObjectToItem, 
+    CFDictionaryAddValue(_archivedObjectToItem,
                          (__bridge void *)(archivingObject.representedObject),
                          (__bridge void *)archivingObject);
     [_archivingObjectStack addObject:archivingObject];
@@ -208,6 +214,11 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 - (void)popArchivingObject
 {
     [_archivingObjectStack removeLastObject];
+}
+
+- (void)noteNonAnchoringObject:(YACYAMLArchivingObject *)archivingObject
+{
+    [_nonAnchoringObjects addObject:archivingObject];
 }
 
 - (YACYAMLArchivingObject *)previouslySeenArchivingObjectForObject:(id)object
