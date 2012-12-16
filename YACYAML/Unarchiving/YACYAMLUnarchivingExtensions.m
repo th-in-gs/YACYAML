@@ -119,8 +119,7 @@ static NSPredicate *YACYAMLBoolTruePredicate(void)
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                      @"y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON"];
+        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", @"true"];
     });
     
     return predicate;
@@ -137,8 +136,7 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"n|N|no|No|NO|false|False|FALSE|off|Off|OFF"];
+        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", @"false"];
     });
     
     return predicate;
