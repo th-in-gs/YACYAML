@@ -140,9 +140,12 @@ NSMutableArray *sImplicitScalarClasses = nil;
     }
     
     if(success) {
-        // This object will represent the entire document.
-        [_unarchivingObjectStack addObject:[[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
-                                                                              forUnarchiver:self]];
+        YACYAMLUnarchivingObject *obj = [[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
+                                                                           forUnarchiver:self];
+        if (obj) {
+            // This object will represent the entire document.
+            [_unarchivingObjectStack addObject:obj];
+        }
     }
     
     return success;
