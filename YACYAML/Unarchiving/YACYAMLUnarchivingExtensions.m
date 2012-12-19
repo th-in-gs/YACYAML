@@ -38,7 +38,7 @@ void YACYAMLUnarchivingExtensionsRegister(void)
             nil];
 }
 
-static NSPredicate *YACYAMLIntPredicate(void)
+static NSRegularExpression *YACYAMLIntRegularExpression(void)
 {
     // http://yaml.org/type/int.html
     // [-+]?0b[0-1_]+ # (base 2)
@@ -47,118 +47,133 @@ static NSPredicate *YACYAMLIntPredicate(void)
     // |[-+]?0x[0-9a-fA-F_]+ # (base 16)
     // |[-+]?[1-9][0-9_]*(:[0-5]?[0-9])+ # (base 60)
     
-    static NSPredicate *predicate;
+    static NSRegularExpression *expression;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?(0|[1-9][0-9_]*)|[-+]?0x[0-9a-fA-F_]+|[-+]?[1-9][0-9_]*(:[0-5]?[0-9])+"];
+        expression = [NSRegularExpression regularExpressionWithPattern:@"^([-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?(0|[1-9][0-9_]*)|[-+]?0x[0-9a-fA-F_]+|[-+]?[1-9][0-9_]*(:[0-5]?[0-9])+)$"
+                                                               options:0
+                                                                 error:nil];
     });
     
-    return predicate;
+    return expression;
 }
 
-static NSPredicate *YACYAMLFloatPredicate(void)
+
+static NSRegularExpression *YACYAMLFloatRegularExpression(void)
 {
     // http://yaml.org/type/float.html
     // [-+]?([0-9][0-9_]*)?\.[0-9.]*([eE][-+][0-9]+)? (base 10)
     // |[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\.[0-9_]* (base 60)
     
-    static NSPredicate *predicate;
+    static NSRegularExpression *expression;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"[-+]?([0-9][0-9_]*)?\\.[0-9.]*([eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\\.[0-9_]*"];
+        expression = [NSRegularExpression regularExpressionWithPattern:@"^([-+]?([0-9][0-9_]*)?\\.[0-9.]*([eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\\.[0-9_]*)$"
+                                                               options:0
+                                                                 error:nil];
     });
     
-    return predicate;
+    return expression;
 }
 
-static NSPredicate *YACYAMLInfinityPredicate(void)
+static NSSet *YACYAMLInfinitySet(void)
 {
     // http://yaml.org/type/float.html
     // [-+]?\.(inf|Inf|INF) # (infinity)
     
-    static NSPredicate *predicate;
+    static NSSet *set;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"[-+]?\\.(inf|Inf|INF)"];
+        set = [NSSet setWithObjects:@".inf", @".Inf", @".INF",
+                                    @"-.inf", @"-.Inf", @"-.INF",
+                                    @"+.inf", @"+.Inf", @"+.INF",
+                                    nil];
     });
     
-    return predicate;
+    return set;
 }
 
-static NSPredicate *YACYAMLNotANumberPredicate(void)
+static NSSet *YACYAMLNotANumberSet(void)
 {
     // http://yaml.org/type/float.html
     // \.(nan|NaN|NAN)
     
-    static NSPredicate *predicate;
+    static NSSet *set;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"\\.(nan|NaN|NAN)"];
+        set = [NSSet setWithObjects:@".nan", @".NaN", @".NAN", nil];
     });
     
-    return predicate;
-
+    return set;
 }
 
-static NSPredicate *YACYAMLBoolTruePredicate(void)
+static NSSet *YACYAMLBoolTrueSet(void)
 {
     // http://yaml.org/type/bool.html
     // y|Y|yes|Yes|YES|n|N|no|No|NO
     // |true|True|TRUE|false|False|FALSE
     // |on|On|ON|off|Off|OFF
     
-    static NSPredicate *predicate;
+    static NSSet *set;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                      @"y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON"];
+        set = [NSSet setWithObjects:@"y", @"Y", @"yes", @"Yes", @"YES",
+                                    @"true", @"True", @"TRUE",
+                                    @"on", @"On", @"ON",
+                                    nil];
     });
     
-    return predicate;
+    return set;
 }
 
-static NSPredicate *YACYAMLBoolFalsePredicate(void)
+static NSSet *YACYAMLBoolFalseSet(void)
 {
     // http://yaml.org/type/bool.html
     // y|Y|yes|Yes|YES|n|N|no|No|NO
     // |true|True|TRUE|false|False|FALSE
     // |on|On|ON|off|Off|OFF
     
-    static NSPredicate *predicate;
+    static NSSet *set;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"n|N|no|No|NO|false|False|FALSE|off|Off|OFF"];
+        set = [NSSet setWithObjects:@"n", @"N", @"no", @"No", @"NO",
+                                    @"false", @"false", @"FALSE",
+                                    @"off", @"Off", @"OFF",
+                                    nil];
     });
     
-    return predicate;
+    return set;
 }
 
 
 + (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 {
-    return [YACYAMLIntPredicate() evaluateWithObject:scalarString] || 
-           [YACYAMLFloatPredicate() evaluateWithObject:scalarString] || 
-           [YACYAMLInfinityPredicate() evaluateWithObject:scalarString] || 
-           [YACYAMLNotANumberPredicate() evaluateWithObject:scalarString] || 
-           [YACYAMLBoolTruePredicate() evaluateWithObject:scalarString] || 
-           [YACYAMLBoolFalsePredicate() evaluateWithObject:scalarString];
+    NSRange scalarStringRange = NSMakeRange(0, scalarString.length);
+    return [YACYAMLIntRegularExpression() rangeOfFirstMatchInString:scalarString
+                                                            options:0
+                                                              range:scalarStringRange].location != NSNotFound ||
+           [YACYAMLFloatRegularExpression() rangeOfFirstMatchInString:scalarString
+                                                              options:0
+                                                                range:scalarStringRange].location != NSNotFound ||
+           [YACYAMLInfinitySet() containsObject:scalarString] ||
+           [YACYAMLNotANumberSet() containsObject:scalarString] ||
+           [YACYAMLBoolTrueSet() containsObject:scalarString] ||
+           [YACYAMLBoolFalseSet() containsObject:scalarString];
 }
 
 
 + (id)objectWithYACYAMLScalarString:(NSString *)string
 {
-    if([YACYAMLIntPredicate() evaluateWithObject:string]) {
+    NSRange stringRange = NSMakeRange(0, string.length);
+    if([YACYAMLIntRegularExpression() rangeOfFirstMatchInString:string
+                                                        options:0
+                                                          range:stringRange].location != NSNotFound) {
         long long integer = 0;
         
         const char *chars = [string UTF8String];
@@ -222,7 +237,9 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
         }
         
         return [NSNumber numberWithLongLong:integer];
-    } else if([YACYAMLFloatPredicate() evaluateWithObject:string]) {
+    } else if([YACYAMLFloatRegularExpression() rangeOfFirstMatchInString:string
+                                                                 options:0
+                                                                   range:stringRange].location != NSNotFound) {
         const char *chars = [string UTF8String];
         const char *cursor = chars;            
 
@@ -292,17 +309,17 @@ static NSPredicate *YACYAMLBoolFalsePredicate(void)
         }
         
         return [NSNumber numberWithDouble:d];
-    } else if([YACYAMLInfinityPredicate() evaluateWithObject:string]) {
+    } else if([YACYAMLInfinitySet() containsObject:string]) {
         if([string characterAtIndex:0] == '-') {
             return (__bridge NSNumber *)kCFNumberNegativeInfinity;
         } else {
             return (__bridge NSNumber *)kCFNumberPositiveInfinity;
         }
-    } else if([YACYAMLNotANumberPredicate() evaluateWithObject:string]) {
+    } else if([YACYAMLNotANumberSet() containsObject:string]) {
         return (__bridge NSNumber *)kCFNumberNaN;
-    } else if([YACYAMLBoolTruePredicate() evaluateWithObject:string]) {
+    } else if([YACYAMLBoolTrueSet() containsObject:string]) {
         return (__bridge NSNumber *)kCFBooleanTrue;
-    } else if([YACYAMLBoolFalsePredicate() evaluateWithObject:string]) {
+    } else if([YACYAMLBoolFalseSet() containsObject:string]) {
         return (__bridge NSNumber *)kCFBooleanFalse;
     } else {
         NSLog(@"Warning: Could not parse string \"%@\" to NSNumber, using string as-is", string);
@@ -376,21 +393,24 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
 
 + (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 {
+    NSRange scalarStringRange = NSMakeRange(0, scalarString.length);
     return [YACYAMLTimestampYMDRegularExpression() rangeOfFirstMatchInString:scalarString
                                                                      options:0
-                                                                       range:NSMakeRange(0, scalarString.length)].location != NSNotFound ||
+                                                                       range:scalarStringRange].location != NSNotFound ||
            [YACYAMLTimestampComplicatedRegularExpression() rangeOfFirstMatchInString:scalarString
                                                                              options:0
-                                                                               range:NSMakeRange(0, scalarString.length)].location != NSNotFound;
+                                                                               range:scalarStringRange].location != NSNotFound;
 }
 
 + (id)objectWithYACYAMLScalarString:(NSString *)string
 {
+    NSRange stringRange = NSMakeRange(0, string.length);
+
     NSDateComponents *dateComponents = [[NSDateComponents alloc] init];
     
     NSTextCheckingResult *ymdMatch = [YACYAMLTimestampYMDRegularExpression() firstMatchInString:string  
                                                                                         options:0
-                                                                                          range:NSMakeRange(0, string.length)];
+                                                                                          range:stringRange];
     
     NSTimeInterval secondsFraction = 0;
     
@@ -402,7 +422,7 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
     } else {
          NSTextCheckingResult *match = [YACYAMLTimestampComplicatedRegularExpression() firstMatchInString:string  
                                                                                                      options:0
-                                                                                                    range:NSMakeRange(0, string.length)];
+                                                                                                    range:stringRange];
         
         dateComponents.year =    [[string substringWithRange:[match rangeAtIndex:1]] integerValue];
         dateComponents.month =   [[string substringWithRange:[match rangeAtIndex:2]] integerValue];
@@ -490,27 +510,30 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
             nil];
 }
 
-static NSPredicate *YACYAMLNullPredicate(void)
+static NSSet *YACYAMLNullSet(void)
 {
     // http://yaml.org/type/null.html
     // ~ # (canonical)
     // |null|Null|NULL # (English)
     // | # (Empty)
     
-    static NSPredicate *predicate;
+    static NSSet *set;
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@",
-                     @"~|null|Null|NULL|"];
+        set = [NSSet setWithObjects:@"~",
+                                    @"null", @"Null", @"NULL",
+                                    @"",
+                                    nil];
     });
     
-    return predicate;
+    return set;
 }
+
 
 + (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
 {
-    return [YACYAMLNullPredicate() evaluateWithObject:scalarString];
+    return [YACYAMLNullSet() containsObject:scalarString];
 }
 
 + (id)objectWithYACYAMLScalarString:(NSString *)string;
@@ -567,7 +590,7 @@ static NSPredicate *YACYAMLNullPredicate(void)
 
 - (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
-    // Again, using the CF method to avid NSMutableDictionary's copying of
+    // Again, using the CF method to avoid NSMutableDictionary's copying of
     // the key.  This matches the YAML spec when aliases are used as keys
     // (the exact anchored object the alias references will be used), and also
     // allows the use of objects that don't conform to NSCopying as keys, which 
@@ -594,16 +617,24 @@ static NSPredicate *YACYAMLNullPredicate(void)
 
 + (id)objectForYACYAMLUnarchiving
 {
-    return [[NSMutableSet alloc] init];
+    // We use a CFMutableSet rather than an NSMutableSet because testing has
+    // shown it to be /slightly/ faster than NSMutableSet when loading
+    // large (multi-megabyte) sets.  This might be simply due to less
+    // implicit retain/releasing by ARC in the YACYAMLUnarchivingSetObject:...
+    // method, below.
+    return (__bridge_transfer id)CFSetCreateMutable(kCFAllocatorDefault,
+                                                    0,
+                                                    &kCFTypeSetCallBacks);
 }
 
 - (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
     // YAML represents sets as mappings of the contents to nil objects.
     // Note that althouth this category is on NSSet, we know that this 
-    // instance is guaranteed to be one returned by 
+    // instance is guaranteed to be one returned by
     // +objectForYACYAMLUnarchiving.
-    [(NSMutableSet *)self addObject:key];
+    CFSetAddValue((__bridge CFMutableSetRef)self,
+                  (__bridge CFTypeRef)key);
 }
 
 @end

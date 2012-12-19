@@ -237,8 +237,15 @@ NSMutableArray *sImplicitScalarClasses = nil;
 
 + (Class)classForYAMLScalarString:(NSString *)scalarString
 {
-    Class ret = nil;
+    if(![scalarString length]) {
+        // An optimisation from experience.  This is an extremely cheap test in
+        // the normal case, and in the case of large !sets, which are encoded
+        // as mappings with all-NULL objects, saves a lot of time as we don't 
+        // need to check all the objects as potentially matching scalars.
+        return [NSNull class];
+    }
     
+    Class ret = nil;
     pthread_mutex_lock(&sImplicitScalarClassesMutex);
     {
         for(id class in sImplicitScalarClasses) {
@@ -249,7 +256,6 @@ NSMutableArray *sImplicitScalarClasses = nil;
         }
     }
     pthread_mutex_unlock(&sImplicitScalarClassesMutex);
-    
     return ret;
 }
 

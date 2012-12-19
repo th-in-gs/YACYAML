@@ -101,10 +101,12 @@
     }
     
     if(!_representedObject) {
-        NSString *scalarString = [[NSString alloc] initWithBytes:event->data.scalar.value
-                                                          length:event->data.scalar.length 
-                                                        encoding:NSUTF8StringEncoding];
-
+        NSString *scalarString = (__bridge_transfer NSString *)CFStringCreateWithBytes(kCFAllocatorDefault,
+                                                                                       event->data.scalar.value,
+                                                                                       event->data.scalar.length,
+                                                                                       kCFStringEncodingUTF8,
+                                                                                       NO);
+        
         if(!representedClass && event->data.scalar.plain_implicit) {
             representedClass = [[_unarchiver class] classForYAMLScalarString:scalarString];
         }
