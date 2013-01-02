@@ -151,7 +151,8 @@
 - (NSString *)YACYAMLScalarString
 {
     if([self YACYAMLArchivingExtensions_isBoolean]) {
-        return self.boolValue ? @"y" : @"n";
+        // TODO: Should be configurable
+        return self.boolValue ? @"true" : @"false";
     } if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberPositiveInfinity]) {
         return @".inf";
     } else if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberNegativeInfinity]) {
