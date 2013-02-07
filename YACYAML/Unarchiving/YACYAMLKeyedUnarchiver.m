@@ -374,7 +374,7 @@ NSMutableArray *sImplicitScalarClasses = nil;
             }
             break;
         case ':': // SEL
-            *((const char **)data) = sel_getName(NSSelectorFromString(object));
+            *(SEL*)data = NSSelectorFromString(object);
             break;
         case 'c': // A char
             *(char *)data = [object charValue];

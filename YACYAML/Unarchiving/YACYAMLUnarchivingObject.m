@@ -14,6 +14,7 @@
 #import "YACYAMLUnarchivingExtensions.h"
 
 #import <libYAML/yaml.h>
+#import <objc/message.h>
 
 @implementation YACYAMLUnarchivingObject {
     __unsafe_unretained YACYAMLKeyedUnarchiver *_unarchiver;
@@ -23,10 +24,16 @@
         
     NSUInteger _unkeyedChildIndex;
     
+    // See comments in _parseWithParser:... for the purpose of this ivar.
+    void *_uninitializedRepresentedObject;
     id _representedObject;
 }
 
-@synthesize representedObject = _representedObject;
+- (id)representedObject
+{
+    // See comments in _parseWithParser:...
+    return _representedObject ?: (__bridge id)_uninitializedRepresentedObject;
+}
 
 - (id)initWithParser:(struct yaml_parser_s *)parser
        forUnarchiver:(YACYAMLKeyedUnarchiver *)unarchiver;
@@ -159,10 +166,20 @@
         _representedObject = [representedClass objectForYACYAMLUnarchiving];
     } else {
         if(!_unarchiver.isInitWithCoderDisallowed) {
-            // No init.  We'll call initWithCoder later.
-            _representedObject = [representedClass alloc];
+            // No init.  We'll call initWithCoder later (see further comments
+            // lower in the method).
+            
+            // ARC seems to get confused if we strongly store an alloced object,
+            // but its -initWithCoder: method, when we later call it, returns a
+            // different object.  CALayer in particular seems to do this a lot.
+            // We therefore bypass ARC when calling -alloc, and assign the
+            // uninitialized object temporarity to an void * ivar, safe in the
+            // knowledge that its retain count is still +1.  We only assign to a
+            // strongly retained ivar later, after calling -initWithCoder: on
+            // the unretained ivar.
+            _uninitializedRepresentedObject = (__bridge void *)((id(*)(id,SEL))objc_msgSend)(representedClass, @selector(alloc));
         } else {
-            // Init with coder is disallowed.  Just present these as a simple
+            // -initWithCoder: is disallowed.  Just present these as a simple
             // mapping or sequence in an NSDictionary or NSArray.
             if(type == YAML_MAPPING_START_EVENT) {
                 representedClass = [NSDictionary class];
@@ -174,12 +191,12 @@
     }
     
     if(anchorString) {
-        // This is an invalid thing to do if the initWithCoder later returns
+        // This is an invalid thing to do if the -initWithCoder: later returns
         // a different object to the one that alloc returns, but I can't
         // see a way to decode cyclic structures without doing it - we need
         // to be able to return a valid object for an anchor that refers to 
         // this object from 'inside' it, eve though it's not fully 
-        // initialzed yet.
+        // initialized yet.
         //
         // Presumably, the system NSCoder classes do a similar thing.  The
         // only widely used open source one, MAKeyedArchiver, certainly 
@@ -255,7 +272,9 @@
     // The representedObject was allocated above (ick! - see comment above).
     if(_keyedChildren || _unkeyedChildren) {
         [_unarchiver pushUnarchivingObject:self];
-        _representedObject = [_representedObject initWithCoder:_unarchiver];
+        void * initializedObject = (__bridge void *)((id(*)(id,SEL,id))objc_msgSend)((__bridge id)_uninitializedRepresentedObject, @selector(initWithCoder:), _unarchiver);
+        _uninitializedRepresentedObject = nil;
+        _representedObject = (__bridge_transfer id)initializedObject;
         [_unarchiver popUnarchivingObject];
     }
     
