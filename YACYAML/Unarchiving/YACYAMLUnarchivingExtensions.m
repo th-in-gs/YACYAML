@@ -614,7 +614,7 @@ static void YACYAMLCFDictionaryMergeFromOtherDictionary(const void *key, const v
             // Enumerate in reverse because "Keys in mapping nodes earlier in
             // the sequence override keys specified in later mapping nodes"
             for(NSDictionary *mapping in ((NSArray *)object).reverseObjectEnumerator) {
-                [self YACYAMLUnarchivingSetObject:mapping forKey:@"<<"];
+                [self YACYAMLUnarchivingSetObject:mapping forKey:sSharedYACYAMLMergeKey];
             }
             mappingHandled = YES;
         } else {
