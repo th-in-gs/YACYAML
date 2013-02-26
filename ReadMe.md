@@ -231,14 +231,13 @@ It should hopefully parse everything 'sensibly', but specific mappings from/to C
 - Timestamps ([`!!timestamp`](http://yaml.org/type/timestamp.html)) to/from `NSDate`s
 - Binary data ([`!!binary`](http://yaml.org/type/binary.html)) to/from `NSData`s
 - Null ([`!!null`](http://yaml.org/type/null.html)) to/from `NSNull`
+- Merging of mappings ([`!!merge`](http://yaml.org/type/merge.html))
 
 ### Unsupported
 - Pairs ([`!!pairs`](http://yaml.org/type/pairs.html))
     - You'll get an array of dictionaries containing one key and value each (this is actually compliant with the spec, given that Cocoa has no pair class).
 - Ordered mappings ([`!!omap`](http://yaml.org/type/omap.html))
     - You'll get an ordered array of dictionaries containing one key and value each (this is, again, compliant with the spec given that Cocoa has no ordered mapping class).
-- Merging of mappings ([`!!merge`](http://yaml.org/type/merge.html))
-    - You'll get mappings with a '<<' key representing the merge.
 - Default values for mappings ([`!!value`](http://yaml.org/type/value.html))
     - You'll get mappings with '=' key representing the default value. This may be spec-compliant, depending on how you think about default values.
 - YAML in YAML ([`!!yaml`](http://yaml.org/type/yaml.html))

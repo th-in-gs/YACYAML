@@ -11,6 +11,12 @@
 #include <xlocale.h>
 #include <resolv.h>
 
+
+@interface YACYAMLMergeKey : NSObject
+@end
+
+static YACYAMLMergeKey *sSharedYACYAMLMergeKey;
+
 /*
 @implementation NSString (YACYAMLArchivingExtensions)
 @end
@@ -25,6 +31,7 @@ void YACYAMLUnarchivingExtensionsRegister(void)
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSSet class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSNull class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSDate class]];
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[YACYAMLMergeKey class]];
 }
 
 @implementation NSNumber (YACYAMLUnarchivingExtensions)
@@ -588,20 +595,50 @@ static NSSet *YACYAMLNullSet(void)
                                                           &kCFTypeDictionaryValueCallBacks);
 }
 
+static void YACYAMLCFDictionaryMergeFromOtherDictionary(const void *key, const void *value, void *context) 
+{
+    CFDictionarySetValue((CFMutableDictionaryRef)context, key,  value);
+}
+
 - (void)YACYAMLUnarchivingSetObject:(id)object forKey:(id)key
 {
-    // Again, using the CF method to avoid NSMutableDictionary's copying of
-    // the key.  This matches the YAML spec when aliases are used as keys
-    // (the exact anchored object the alias references will be used), and also
-    // allows the use of objects that don't conform to NSCopying as keys, which 
-    // is possible in a YAML document (if not very plausible that it'll happen
-    // in real life).
-    // Note that although this category is on NSDictionary, we know that this 
-    // instance is guaranteed to be one returned by 
-    // +objectForYACYAMLUnarchiving.
-    CFDictionarySetValue((__bridge CFMutableDictionaryRef)self,
-                         (__bridge CFTypeRef)key,
-                         (__bridge CFTypeRef)object);
+    BOOL mappingHandled = NO;
+    
+    if(key == sSharedYACYAMLMergeKey) {
+        if([object isKindOfClass:[NSDictionary class]]) {
+            CFDictionaryApplyFunction((__bridge void *)object,
+                                      YACYAMLCFDictionaryMergeFromOtherDictionary,
+                                      (__bridge CFMutableDictionaryRef)self);
+            mappingHandled = YES;
+        } else if([object isKindOfClass:[NSArray class]]) {
+            // Enumerate in reverse because "Keys in mapping nodes earlier in
+            // the sequence override keys specified in later mapping nodes"
+            for(NSDictionary *mapping in ((NSArray *)object).reverseObjectEnumerator) {
+                [self YACYAMLUnarchivingSetObject:mapping forKey:@"<<"];
+            }
+            mappingHandled = YES;
+        } else {
+            // We can't handle this merge - it is corrupt.
+            // Turn the key back into a string so that something sensible
+            // is created.
+            key = @"<<";
+        }
+    }
+        
+    if(!mappingHandled) {
+        // Again, using the CF method to avoid NSMutableDictionary's copying of
+        // the key.  This matches the YAML spec when aliases are used as keys
+        // (the exact anchored object the alias references will be used), and also
+        // allows the use of objects that don't conform to NSCopying as keys, which
+        // is possible in a YAML document (if not very plausible that it'll happen
+        // in real life).
+        // Note that although this category is on NSDictionary, we know that this
+        // instance is guaranteed to be one returned by
+        // +objectForYACYAMLUnarchiving.
+        CFDictionarySetValue((__bridge CFMutableDictionaryRef)self,
+                             (__bridge CFTypeRef)key,
+                             (__bridge CFTypeRef)object);
+    }
 }
 
 @end
@@ -635,6 +672,34 @@ static NSSet *YACYAMLNullSet(void)
     // +objectForYACYAMLUnarchiving.
     CFSetAddValue((__bridge CFMutableSetRef)self,
                   (__bridge CFTypeRef)key);
+}
+
+@end
+
+@implementation YACYAMLMergeKey
+
++ (void)initialize
+{
+    if(self == [YACYAMLMergeKey class]) {
+        sSharedYACYAMLMergeKey = [[self alloc] init];
+    }
+}
+
++ (NSArray *)YACYAMLUnarchivingTags
+{
+    return [[NSArray alloc] initWithObjects:
+            @"tag:yaml.org,2002:merge",
+            nil];
+}
+
++ (BOOL)YACYAMLImplicitlyMatchesScalarString:(NSString *)scalarString;
+{
+    return [scalarString isEqualToString:@"<<"];
+}
+
++ (id)objectWithYACYAMLScalarString:(NSString *)string
+{
+    return sSharedYACYAMLMergeKey;
 }
 
 @end
