@@ -151,7 +151,8 @@
 - (NSString *)YACYAMLScalarString
 {
     if([self YACYAMLArchivingExtensions_isBoolean]) {
-        // TODO: Should be configurable
+        // Previously, was using 'y'/'n', but 'true'/'false' are canonical
+        // YAML 1.2, and valid YAML 1.1.
         return self.boolValue ? @"true" : @"false";
     } if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberPositiveInfinity]) {
         return @".inf";
