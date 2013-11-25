@@ -174,10 +174,10 @@
         "123456789012345678901234567890123456789012345678901234567890"
         "123456789012345678901234567890123456789012345678901234567890";
     
-    NSArray *testDictionary = [NSDictionary dictionaryWithObjectsAndKeys:
-                                [NSData dataWithBytesNoCopy:bytes length:sizeof(bytes) freeWhenDone:NO],
-                                @"my data's key",
-                                nil];
+    NSDictionary *testDictionary = [NSDictionary dictionaryWithObjectsAndKeys:
+                                    [NSData dataWithBytesNoCopy:bytes length:sizeof(bytes) freeWhenDone:NO],
+                                    @"my data's key",
+                                    nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
     
@@ -192,10 +192,10 @@
 {
     NSString *string = @"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum";
     
-    NSArray *testDictionary = [NSDictionary dictionaryWithObjectsAndKeys:
-                               string,
-                               @"my string's key",
-                               nil];
+    NSDictionary *testDictionary = [NSDictionary dictionaryWithObjectsAndKeys:
+                                    string,
+                                    @"my string's key",
+                                    nil];
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
     
@@ -224,9 +224,9 @@
 
 - (void)testSetArchiving
 {
-    NSArray *testArray = [NSSet setWithObjects:@"one", @"two", @"three", @"four", @"two", nil];
+    NSSet *testSet = [NSSet setWithObjects:@"one", @"two", @"three", @"four", @"two", nil];
     
-    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testSet];
     
     STAssertTrue(data.length != 0, nil);
 }
