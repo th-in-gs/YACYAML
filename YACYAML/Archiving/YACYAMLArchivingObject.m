@@ -18,6 +18,8 @@
 #import "YACYAMLArchivingObject.h"
 #import "YACYAMLArchivingExtensions.h"
 
+#import "YACYAMLConstants.h"
+
 @interface YACYAMLArchivingObject ()
 @property (nonatomic, assign) BOOL needsAnchor;
 @end
@@ -152,7 +154,7 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                 NSString *string = [(id<YACYAMLArchivingCustomEncoding>)obj YACYAMLScalarString];
                             
                 const char *stringChars;
-                int stringCharsLength;
+                size_t stringCharsLength;
                 yaml_scalar_style_t style;
 
                 // The below deals with the difference between an empty
@@ -180,13 +182,17 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                     style = YAML_PLAIN_SCALAR_STYLE;
                 }
                 
+                if(stringCharsLength >= INT_MAX) {
+                    [NSException raise:YACYAMLUnsupportedObjectException format:@"Attempt made to encode string too large for YAML"];
+                }
+                
                 yaml_scalar_event_initialize(&event,
                                              anchor,
                                              customTag ? (yaml_char_t *) 
                                                 (yaml_char_t *)customTag.UTF8String : 
                                                 (yaml_char_t *)YAML_STR_TAG, 
                                              (yaml_char_t *)stringChars,
-                                             stringCharsLength,
+                                             (int)stringCharsLength,
                                              [obj YACYAMLArchivingTagCanBePlainImplicit],
                                              [obj YACYAMLArchivingTagCanBeQuotedImplicit],
                                              style);

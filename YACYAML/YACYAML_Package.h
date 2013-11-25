@@ -12,4 +12,4 @@
 extern NSString * const YACYAMLUnkeyedChildrenKey;
 
 extern const yaml_char_t *YACYAMLUnkeyedChildrenKeyChars;
-extern const size_t YACYAMLUnkeyedChildrenKeyCharsLength;
+extern const int YACYAMLUnkeyedChildrenKeyCharsLength;

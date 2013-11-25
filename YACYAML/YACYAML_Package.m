@@ -13,4 +13,4 @@
 NSString * const YACYAMLUnkeyedChildrenKey = @YACYAMLUnkeyedChildrenCString;
 
 const yaml_char_t *YACYAMLUnkeyedChildrenKeyChars = (yaml_char_t *)YACYAMLUnkeyedChildrenCString;
-const size_t YACYAMLUnkeyedChildrenKeyCharsLength = sizeof(YACYAMLUnkeyedChildrenKeyChars) - 1;
+const int YACYAMLUnkeyedChildrenKeyCharsLength = sizeof(YACYAMLUnkeyedChildrenKeyChars) - 1;
