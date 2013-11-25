@@ -181,13 +181,15 @@ static NSSet *YACYAMLBoolFalseSet(void)
     if([YACYAMLIntRegularExpression() rangeOfFirstMatchInString:string
                                                         options:0
                                                           range:stringRange].location != NSNotFound) {
-        long long integer = 0;
+        NSNumber *numberObject = nil;
         
         const char *chars = [string UTF8String];
         const char *cursor = chars;            
 
         if(*cursor) {
             if(strchr(chars, ':') != NULL) {
+                long long signedInteger = 0;
+
                 BOOL negative = NO;
                 
                 if(*cursor == '-') {
@@ -202,22 +204,24 @@ static NSSet *YACYAMLBoolFalseSet(void)
                     if(*cursor != '_') {
                         if(*cursor == ':') {
                             last60part *= 60;
-                            last60part += integer;
-                            integer = 0;
+                            last60part += signedInteger;
+                            signedInteger = 0;
                         } else {
-                            integer *= 10;
-                            integer += *cursor - '0';
+                            signedInteger *= 10;
+                            signedInteger += *cursor - '0';
                         }
                     }
                     ++cursor;
                 }
                 
                 last60part *= 60;
-                integer += last60part;
+                signedInteger += last60part;
                 
                 if(negative) {
-                    integer = -integer;
+                    signedInteger = -signedInteger;
                 }
+                
+                numberObject = [NSNumber numberWithLongLong:signedInteger];
             } else {
                 BOOL isBinary = NO;
                 
@@ -237,13 +241,21 @@ static NSSet *YACYAMLBoolFalseSet(void)
                 
                 // Explicitly pass the base in if we know it's binary,
                 // otherwise let strtoll_l parse the base.
-                integer = strtoll_l(canonicalString, NULL, isBinary ? 2 : 0, _c_locale);
-
+                long long signedInteger = strtoll_l(canonicalString, NULL, isBinary ? 2 : 0, _c_locale);
+                if(signedInteger == LLONG_MAX && errno == ERANGE) {
+                    // A positive value larger than LLONG_MAX (can't fit in a signed long long).
+                    // We'll try decoding it into an unsigned long long.
+                    unsigned long long unsignedInteger = strtoull_l(canonicalString, NULL, isBinary ? 2 : 0, _c_locale);
+                    numberObject = [NSNumber numberWithUnsignedLongLong:unsignedInteger];
+                } else {
+                    numberObject = [NSNumber numberWithLongLong:signedInteger];
+                }
+                
                 free(canonicalString);
             }
         }
         
-        return [NSNumber numberWithLongLong:integer];
+        return numberObject  ?: [NSNumber numberWithInteger:0];
     } else if([YACYAMLFloatRegularExpression() rangeOfFirstMatchInString:string
                                                                  options:0
                                                                    range:stringRange].location != NSNotFound) {
