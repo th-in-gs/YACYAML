@@ -456,7 +456,7 @@
     NSArray *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:integersYAML];
     
     for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
-        STAssertEquals(685230, [number integerValue], NULL);
+        STAssertEquals(((NSInteger)685230), [number integerValue], NULL);
     }
 }
 
@@ -473,7 +473,7 @@
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:integersYAML];
     
     for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
-        STAssertEquals(-685230, [number integerValue], NULL);
+        STAssertEquals(((NSInteger)-685230), [number integerValue], NULL);
     }
 }
 
