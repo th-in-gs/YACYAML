@@ -7,6 +7,8 @@
 //
 
 #import "YACYAMLUnarchivingExtensions.h"
+#import "YACYAML_Package.h"
+#import <objc/runtime.h>
 
 #include <xlocale.h>
 #include <resolv.h>
@@ -607,7 +609,7 @@ static NSSet *YACYAMLNullSet(void)
                                                           &kCFTypeDictionaryValueCallBacks);
 }
 
-static void YACYAMLCFDictionaryMergeFromOtherDictionary(const void *key, const void *value, void *context) 
+static void YACYAMLCFDictionaryMergeFromOtherDictionary(const void *key, const void *value, void *context)
 {
     CFDictionarySetValue((CFMutableDictionaryRef)context, key,  value);
 }
@@ -630,10 +632,20 @@ static void YACYAMLCFDictionaryMergeFromOtherDictionary(const void *key, const v
             }
             mappingHandled = YES;
         } else {
-            // We can't handle this merge - it is corrupt.
-            // Turn the key back into a string so that something sensible
-            // is created.
-            key = @"<<";
+            // For custom mapping types, check if the object has been annotated with the original map
+            // that was used to create it. If so, merge that instead.
+            NSDictionary *originalMap = objc_getAssociatedObject(object, YACYAMLOriginalMapAnnotationKey);
+            if(originalMap != nil) {
+                CFDictionaryApplyFunction((__bridge void *)originalMap,
+                                          YACYAMLCFDictionaryMergeFromOtherDictionary,
+                                          (__bridge CFMutableDictionaryRef)self);
+                mappingHandled = YES;
+            } else {
+                // We can't handle this merge - it is corrupt.
+                // Turn the key back into a string so that something sensible
+                // is created.
+                key = @"<<";
+            }
         }
     }
         

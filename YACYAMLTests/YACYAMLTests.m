@@ -16,6 +16,35 @@
 
 #import <math.h>
 
+/// Custom classes used by @c -testCustomTypeMerging
+@interface YACYAMLCustomTypeMerging : NSObject <NSCoding>
+
+@property (retain, nonatomic) NSString *property1;
+@property (retain, nonatomic) NSString *property2;
+
+@end
+
+@implementation YACYAMLCustomTypeMerging
+
+- (instancetype) initWithCoder: (NSCoder *)aDecoder
+{
+    self = [self init];
+    if(self) {
+        self.property1 = [aDecoder decodeObjectForKey: @"key1"];
+        self.property2 = [aDecoder decodeObjectForKey: @"key2"];
+    }
+    return self;
+}
+
+- (void) encodeWithCoder: (NSCoder *)aCoder
+{
+    [aCoder encodeObject: self.property1 forKey: @"key1"];
+    [aCoder encodeObject: self.property2 forKey: @"key2"];
+}
+
+@end
+
+
 @interface YACYAMLKeyedArchiver (testing)
 - (NSString *)generateAnchor;
 @end
@@ -646,6 +675,41 @@
     NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
 
     STAssertTrue(unarchived.count != 0, nil);
+}
+
+- (void)testMergingFromCustomTypes
+{
+    NSString *yaml =
+    @"---\n"
+    @"original: !YACYAMLCustomTypeMerging &CUSTOMTYPEMERGE\n"
+    @"    key1: this key should be inherited\n"
+    @"    key2: this key should be overridden\n"
+    @"# Keys can be merged from custom types into other custom types\n"
+    @"mergedCustomType: !YACYAMLCustomTypeMerging\n"
+    @"    <<: *CUSTOMTYPEMERGE\n"
+    @"    key2: override for key2\n"
+    @"# Keys can be merged from custom types into regular maps\n"
+    @"mergedMap:\n"
+    @"    <<: *CUSTOMTYPEMERGE\n"
+    @"    key2: override for key2\n";
+    
+    NSDictionary *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+    STAssertTrue(unarchived.count == 3, nil);
+    
+    YACYAMLCustomTypeMerging *original = unarchived[@"original"];
+    STAssertTrue([original isKindOfClass: [YACYAMLCustomTypeMerging class]], nil);
+    STAssertEqualObjects(original.property1, @"this key should be inherited", nil);
+    STAssertEqualObjects(original.property2, @"this key should be overridden", nil);
+    
+    YACYAMLCustomTypeMerging *mergedCustomType = unarchived[@"mergedCustomType"];
+    STAssertTrue([mergedCustomType isKindOfClass: [YACYAMLCustomTypeMerging class]], nil);
+    STAssertEqualObjects(mergedCustomType.property1, @"this key should be inherited", nil);
+    STAssertEqualObjects(mergedCustomType.property2, @"override for key2", nil);
+    
+    NSDictionary *mergedMap = unarchived[@"mergedMap"];
+    STAssertTrue([mergedMap isKindOfClass: [NSDictionary class]], nil);
+    STAssertEqualObjects(mergedMap[@"key1"], @"this key should be inherited", nil);
+    STAssertEqualObjects(mergedMap[@"key2"], @"override for key2", nil);
 }
 
 - (void)testYAMLExtensions
