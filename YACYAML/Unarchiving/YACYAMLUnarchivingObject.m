@@ -15,6 +15,7 @@
 
 #import <libYAML/yaml.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
 
 @implementation YACYAMLUnarchivingObject {
     __unsafe_unretained YACYAMLKeyedUnarchiver *_unarchiver;
@@ -33,6 +34,12 @@
 {
     // See comments in _parseWithParser:...
     return _representedObject ?: (__bridge id)_uninitializedRepresentedObject;
+}
+
+- (void) dealloc
+{
+    // De-annotate our represented object in case it was annotated for merge keys.
+    objc_setAssociatedObject(_representedObject, YACYAMLOriginalMapAnnotationKey, nil, OBJC_ASSOCIATION_ASSIGN);
 }
 
 - (id)initWithParser:(struct yaml_parser_s *)parser
@@ -146,6 +153,7 @@
         anchorString = [NSString stringWithUTF8String:(const char *)anchor];
     }
     
+    
     Class representedClass = nil;
     if(tag) {
         NSString *tagString = [NSString stringWithUTF8String:(const char *)tag];
@@ -190,6 +198,8 @@
         } 
     }
     
+    BOOL shouldAnnotateWithOriginalMap = NO;
+    
     if(anchorString) {
         // This is an invalid thing to do if the -initWithCoder: later returns
         // a different object to the one that alloc returns, but I can't
@@ -210,14 +220,26 @@
         
         [_unarchiver setUnarchivingObject:self
                                 forAnchor:anchorString];
+        
+        // If a custom map type has been referenced by an anchor, annotate the resulting object
+        // with the original mapping values so that it can be merged as part of a merge key.
+        shouldAnnotateWithOriginalMap = (type == YAML_MAPPING_START_EVENT) && ![representedClass isSubclassOfClass: [NSDictionary class]];
     }
     
     if(type == YAML_MAPPING_START_EVENT) {
         NSMutableDictionary *buildKeyedChildren = nil;
         id<YACYAMLUnarchivingMapping> mappingElements;
         
+        // For objects that implement YACYAMLUnarchivingMapping, we must build up a parallel dictionary of elements
+        // as they were in the original map, with which the object is annotated so that it can be used in a merge key.
+        // (For objects that don't implement the protocol, we'll just re-use the same dictionary we're already build up for them.)
+        NSMutableDictionary *originalMapping = nil;
+        
         if([representedClass instancesRespondToSelector:@selector(YACYAMLUnarchivingSetObject:forKey:)]) {
             mappingElements = _representedObject;
+            if (shouldAnnotateWithOriginalMap) {
+                originalMapping = [[NSMutableDictionary alloc] init];
+            }
         } else {
             buildKeyedChildren = [[NSMutableDictionary alloc] init];
             mappingElements = buildKeyedChildren;
@@ -228,8 +250,11 @@
                                                                     forUnarchiver:_unarchiver])) {
             keyAndData[index++] = nextEventObject;
             if(index == 2) {
-                [mappingElements YACYAMLUnarchivingSetObject:keyAndData[1].representedObject
-                                                      forKey:keyAndData[0].representedObject];
+                id key = keyAndData[0].representedObject;
+                id value = keyAndData[1].representedObject;
+                [mappingElements YACYAMLUnarchivingSetObject: value forKey: key];
+                if (originalMapping)
+                    [originalMapping YACYAMLUnarchivingSetObject: value forKey: key];
                 index = 0;
             }
         }
@@ -246,7 +271,18 @@
             }
             
             _keyedChildren = buildKeyedChildren;
-        } 
+            originalMapping = buildKeyedChildren;
+        }
+        
+        // Annotate the represented object with the original mapping keys and values,
+        // so that it can be used in merge keys.
+        if(originalMapping) {
+            id objToAnnotate = _representedObject ?: (__bridge id)_uninitializedRepresentedObject;
+            // Note that objects that will be initialized with initWithCoder: will get re-annotated below:
+            // we annotate it in the interim in case anything refers to it before it's initialized.
+            objc_setAssociatedObject(objToAnnotate, YACYAMLOriginalMapAnnotationKey, originalMapping, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        };
+        
     } else {
         NSMutableArray *buildUnkeyedChildren = nil;
         id<YACYAMLUnarchivingSequence> sequenceElements;
@@ -275,6 +311,12 @@
         void * initializedObject = (__bridge void *)((id(*)(id,SEL,id))objc_msgSend)((__bridge id)_uninitializedRepresentedObject, @selector(initWithCoder:), _unarchiver);
         _uninitializedRepresentedObject = nil;
         _representedObject = (__bridge_transfer id)initializedObject;
+        
+        //(Re-)annotate the new object with the original map if necessary.
+        if (shouldAnnotateWithOriginalMap && _keyedChildren) {
+            objc_setAssociatedObject(_representedObject, YACYAMLOriginalMapAnnotationKey, _keyedChildren, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        
         [_unarchiver popUnarchivingObject];
     }
     

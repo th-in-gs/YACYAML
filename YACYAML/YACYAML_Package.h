@@ -9,6 +9,8 @@
 #import <Foundation/Foundation.h>
 #import <libYAML/yaml.h>
 
+extern const char * const YACYAMLOriginalMapAnnotationKey;
+
 extern NSString * const YACYAMLUnkeyedChildrenKey;
 
 extern const yaml_char_t *YACYAMLUnkeyedChildrenKeyChars;

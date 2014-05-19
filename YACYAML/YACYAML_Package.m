@@ -10,6 +10,8 @@
 
 #define YACYAMLUnkeyedChildrenCString "___unkeyedChildren"
 
+const char * const YACYAMLOriginalMapAnnotationKey = "___YACYAML_originalMap";
+
 NSString * const YACYAMLUnkeyedChildrenKey = @YACYAMLUnkeyedChildrenCString;
 
 const yaml_char_t *YACYAMLUnkeyedChildrenKeyChars = (yaml_char_t *)YACYAMLUnkeyedChildrenCString;
