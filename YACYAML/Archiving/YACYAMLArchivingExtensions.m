@@ -189,15 +189,15 @@
 {
     NSString *ret = nil;
     
-    NSUInteger units =  NSYearCalendarUnit | 
-                        NSMonthCalendarUnit |  
-                        NSDayCalendarUnit | 
-                        NSHourCalendarUnit | 
-                        NSMinuteCalendarUnit | 
-                        NSSecondCalendarUnit |
-                        NSTimeZoneCalendarUnit;
+    NSUInteger units =  NSCalendarUnitYear |
+                        NSCalendarUnitMonth |
+                        NSCalendarUnitDay |
+                        NSCalendarUnitHour |
+                        NSCalendarUnitMinute |
+                        NSCalendarUnitSecond |
+                        NSCalendarUnitTimeZone;
     
-    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
     calendar.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
      
     NSDateComponents *components = [calendar components:units fromDate:self];
