@@ -530,7 +530,7 @@
 			name = YACYAMLTests;
 			productName = YACYAMLTests;
 			productReference = 7DDC031E156541F8001832F5 /* YACYAMLTests.octest */;
-			productType = "com.apple.product-type.bundle";
+			productType = "com.apple.product-type.bundle.ocunit-test";
 		};
 		7DE3E3AB15654430006663D2 /* libYAML */ = {
 			isa = PBXNativeTarget;
@@ -708,7 +708,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				ONLY_ACTIVE_ARCH = YES;
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
-				SDKROOT = iphoneos;
+				SDKROOT = macosx10.10;
 				VALID_ARCHS = "arm64 armv7 armv7s i386 x86_64";
 				WARNING_CFLAGS = "-Wall";
 			};
@@ -743,7 +743,7 @@
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
-				SDKROOT = iphoneos;
+				SDKROOT = macosx10.10;
 				VALIDATE_PRODUCT = YES;
 				VALID_ARCHS = "arm64 armv7 armv7s i386 x86_64";
 				WARNING_CFLAGS = "-Wall";
