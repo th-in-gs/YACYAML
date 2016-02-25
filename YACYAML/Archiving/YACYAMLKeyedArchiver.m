@@ -400,12 +400,12 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
             [NSException raise:YACYAMLUnsupportedTypeException format:@"Tried to encode value of unhandled type"];
 	}
     
-    [self encodeObject:toEncode forKey:nil];
+    [self encodeObject:toEncode forKey:NSStringFromClass(self.class)];
 }
 
 - (void)encodeDataObject:(NSData *)data
 {
-    [self encodeObject:data forKey:nil];
+    [self encodeObject:data forKey:NSStringFromClass(self.class)];
 }
 
 @end
