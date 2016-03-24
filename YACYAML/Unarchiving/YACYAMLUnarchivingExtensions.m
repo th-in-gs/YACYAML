@@ -474,7 +474,7 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
         dateComponents.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:secondsFromGMT];
     }
     
-    NSCalendar *calender = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+    NSCalendar *calender = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
     calender.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
     
     NSDate *ret = [calender dateFromComponents:dateComponents];
