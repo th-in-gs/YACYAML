@@ -16,7 +16,6 @@
 
 #import <math.h>
 
-/// Custom classes used by @c -testCustomTypeMerging
 @interface YACYAMLCustomTypeMerging : NSObject <NSCoding>
 
 @property (retain, nonatomic) NSString *property1;
@@ -42,8 +41,34 @@
     [aCoder encodeObject: self.property2 forKey: @"key2"];
 }
 
+@end    
+        
+@interface YACYAMLTestsNilSubobjectObject : NSObject <NSCoding>
 @end
 
+@implementation YACYAMLTestsNilSubobjectObject {
+    id _testSubobject;
+}
+
+- (BOOL)decodedCorrectly {
+    return _testSubobject == nil;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if(self) {
+        _testSubobject = [coder decodeObjectForKey:@"testSubobject"];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:nil forKey:@"testSubobject"];
+}
+
+@end
 
 @interface YACYAMLKeyedArchiver (testing)
 - (NSString *)generateAnchor;
@@ -89,7 +114,7 @@
     
     yaml_parser_delete(&parser);
     
-    STAssertFalse(sawError, nil);
+    XCTAssertFalse(sawError, @"YAML parsing produced unexpected errors");
 }
 
 - (void)testFloatScalarArchiving
@@ -108,7 +133,7 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectedly zero length");
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
@@ -119,9 +144,9 @@
     // encode e.g. float vs. double.
     // Nevertheless, the values are good enough for use, as a comparison of
     // their string represenatation will show.
-    //STAssertTrue([unarchivedArray isEqual:testArray], nil);
-    STAssertTrue([[unarchivedArray valueForKey:@"stringValue"]
-                                       isEqual:[testArray valueForKey:@"stringValue"]], nil);
+    //XCTAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([[unarchivedArray valueForKey:@"stringValue"]
+                                       isEqual:[testArray valueForKey:@"stringValue"]], @"Equality check failed");
 }
 
 - (void)testIntegerScalarArchiving
@@ -151,11 +176,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([unarchivedArray isEqual:testArray], @"Unarchived object not equal to archived object");
 }
 
 - (void)testBooleanArchiving
@@ -167,11 +192,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([unarchivedArray isEqual:testArray], @"Unarchived object not equal to archived object");
 }
 
 
@@ -210,11 +235,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedDictionary isEqual:testDictionary], nil);
+    XCTAssertTrue([unarchivedDictionary isEqual:testDictionary], @"Unarchived object not equal to archived object");
 }
 
 - (void)testBigStringArchiving
@@ -228,11 +253,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedDictionary isEqual:testDictionary], nil);
+    XCTAssertTrue([unarchivedDictionary isEqual:testDictionary], @"Unarchived object not equal to archived object");
 }
 
 
@@ -243,11 +268,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([unarchivedArray isEqual:testArray], @"Unarchived object not equal to archived object");
 }
 
 
@@ -257,7 +282,7 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testSet];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
 }
 
 
@@ -267,11 +292,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([unarchivedArray isEqual:testArray], @"Unarchived object not equal to archived object");
 }
 
 
@@ -282,11 +307,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([unarchivedArray isEqual:testArray], @"Unarchived object not equal to archived object");
 }
 
 - (void)testSimpleDictionaryArchiving
@@ -305,11 +330,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testDictionary];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
         
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedDictionary isEqual:testDictionary], nil);
+    XCTAssertTrue([unarchivedDictionary isEqual:testDictionary], @"Unarchived object not equal to archived object");
 }
 
 - (void)testStringsVsScalars
@@ -324,16 +349,18 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:testArray];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([unarchivedArray isEqual:testArray], nil);
+    XCTAssertTrue([unarchivedArray isEqual:testArray], @"Unarchived object not equal to archived object");
 }
 
 
 - (void)testNSArchiverChars
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     NSMutableData *data = [NSMutableData data];
     
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:data];
@@ -343,14 +370,15 @@
      
     [archiver finishEncoding];
     
-     STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
      
     NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
     
     char *newString = nil;
     [unarchiver decodeValueOfObjCType:"*" at:&newString];
     
-    STAssertTrue(strcmp(string, newString) == 0, nil);
+    XCTAssertTrue(strcmp(string, newString) == 0, @"Unarchived object not equal to archived object");
+#pragma clang diagnostic pop
 }
 
 
@@ -365,14 +393,14 @@
     
     [archiver finishEncoding];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:data];
     
     char *newString = nil;
     [unarchiver decodeValueOfObjCType:"*" at:&newString];
     
-    STAssertTrue(strcmp(string, newString) == 0, nil);
+    XCTAssertTrue(strcmp(string, newString) == 0, @"Unarchived object not equal to archived object");
 }
 /*
 - (void)testUIView
@@ -383,11 +411,11 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:view];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     UIView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], nil);
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], nil);
 }
 */
 - (void)testUIButton
@@ -399,62 +427,74 @@
     
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:button];
     
-    STAssertTrue(data.length != 0, nil);
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
     
     UIView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    STAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], nil);
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], @"Unarchived object not equal to archived object");
+}
+
+- (void)testNilEncoding
+{
+    YACYAMLTestsNilSubobjectObject *object = [[YACYAMLTestsNilSubobjectObject alloc] init];
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:object];
+
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
+
+    YACYAMLTestsNilSubobjectObject *unarchivedObject = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    XCTAssertTrue([unarchivedObject decodedCorrectly], @"Unarchived subobject not nil");
 }
 
 - (void)testAnchorGeneration
 {
     YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:nil];
     
-    STAssertEqualObjects(@"a", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"b", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"a", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"b", [archiver generateAnchor], @"Anchor generation generated unexpected result");
     
     for(int i = 0; i < 24; ++i) {
         [archiver generateAnchor];
     }
     
-    STAssertEqualObjects(@"A", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"B", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"A", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"B", [archiver generateAnchor], @"Anchor generation generated unexpected result");
 
     for(int i = 0; i < 24; ++i) {
         [archiver generateAnchor];
     }
 
-    STAssertEqualObjects(@"aa", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"ab", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"aa", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"ab", [archiver generateAnchor], @"Anchor generation generated unexpected result");
 
     for(int i = 0; i < 24; ++i) {
         [archiver generateAnchor];
     }
     
-    STAssertEqualObjects(@"aA", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"aB", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"aA", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"aB", [archiver generateAnchor], @"Anchor generation generated unexpected result");
 
     
     for(int i = 0; i < 24; ++i) {
         [archiver generateAnchor];
     }
     
-    STAssertEqualObjects(@"ba", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"bb", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"ba", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"bb", [archiver generateAnchor], @"Anchor generation generated unexpected result");
 
     for(int i = 0; i < 24; ++i) {
         [archiver generateAnchor];
     }
     
-    STAssertEqualObjects(@"bA", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"bB", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"bA", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"bB", [archiver generateAnchor], @"Anchor generation generated unexpected result");
     
     for(int j = 0; j < 52; ++j) {
         [archiver generateAnchor];
     }
     
-    STAssertEqualObjects(@"cC", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"cD", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"cC", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"cD", [archiver generateAnchor], @"Anchor generation generated unexpected result");
         
     for(int i = 0; i < 52; ++i) {
         for(int j = 0; j < 52; ++j) {
@@ -462,8 +502,8 @@
         }
     }
 
-    STAssertEqualObjects(@"adE", [archiver generateAnchor], nil);
-    STAssertEqualObjects(@"adF", [archiver generateAnchor], nil);
+    XCTAssertEqualObjects(@"adE", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"adF", [archiver generateAnchor], @"Anchor generation generated unexpected result");
 }
 
 - (void)testPositiveIntegerParsing
@@ -485,7 +525,7 @@
     NSArray *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:integersYAML];
     
     for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
-        STAssertEquals(((NSInteger)685230), [number integerValue], NULL);
+        XCTAssertEqual(((NSInteger)685230), [number integerValue], @"Unarchived object not equal to archived object");
     }
 }
 
@@ -502,7 +542,7 @@
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:integersYAML];
     
     for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
-        STAssertEquals(((NSInteger)-685230), [number integerValue], NULL);
+        XCTAssertEqual(((NSInteger)-685230), [number integerValue], @"Unarchived object not equal to archived object");
     }
 }
 
@@ -517,7 +557,7 @@
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:floatsYAML];
     
     for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
-        STAssertEquals(685230.15, [number doubleValue], NULL);
+        XCTAssertEqual(685230.15, [number doubleValue], @"Unarchived object not equal to archived object");
     }
 }
 
@@ -532,7 +572,7 @@
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:floatsYAML];
     
     for(NSNumber *number in [unarchivedDictionary objectEnumerator]) {
-        STAssertEquals(-685230.15, [number doubleValue], NULL);
+        XCTAssertEqual(-685230.15, [number doubleValue], @"Unarchived object not equal to archived object");
     }
 }
 
@@ -546,19 +586,19 @@
     
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:floatsYAML];
 
-    STAssertTrue(isinf([[unarchivedDictionary objectForKey:@"infinity"] doubleValue]), nil);
-    STAssertTrue([[unarchivedDictionary objectForKey:@"infinity"] doubleValue] > 0, nil);
-    STAssertFalse([[unarchivedDictionary objectForKey:@"infinity"] doubleValue] < 0, nil);
+    XCTAssertTrue(isinf([[unarchivedDictionary objectForKey:@"infinity"] doubleValue]), @"Unarchived object not equal to archived object");
+    XCTAssertTrue([[unarchivedDictionary objectForKey:@"infinity"] doubleValue] > 0, @"Unarchived object not equal to archived object");
+    XCTAssertFalse([[unarchivedDictionary objectForKey:@"infinity"] doubleValue] < 0, @"Unarchived object not equal to archived object");
     
-    STAssertTrue(isinf([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue]), nil);
-    STAssertTrue([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue] > 0, nil);
-    STAssertFalse([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue] < 0, nil);
+    XCTAssertTrue(isinf([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue]), @"Unarchived object not equal to archived object");
+    XCTAssertTrue([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue] > 0, @"Unarchived object not equal to archived object");
+    XCTAssertFalse([[unarchivedDictionary objectForKey:@"positive infinity"] doubleValue] < 0, @"Unarchived object not equal to archived object");
 
-    STAssertTrue(isinf([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue]), nil);
-    STAssertTrue([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue] < 0, nil);
-    STAssertFalse([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue] > 0, nil);
+    XCTAssertTrue(isinf([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue]), @"Unarchived object not equal to archived object");
+    XCTAssertTrue([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue] < 0, @"Unarchived object not equal to archived object");
+    XCTAssertFalse([[unarchivedDictionary objectForKey:@"negative infinity"] doubleValue] > 0, @"Unarchived object not equal to archived object");
 
-    STAssertTrue(isnan([[unarchivedDictionary objectForKey:@"not a number"] doubleValue]), nil);
+    XCTAssertTrue(isnan([[unarchivedDictionary objectForKey:@"not a number"] doubleValue]), @"Unarchived object not equal to archived object");
 }
 
 - (void)testBinaryParsing
@@ -579,10 +619,10 @@
     
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:binaryYAML];
 
-    STAssertTrue([[unarchivedDictionary objectForKey:@"canonical"] isEqual:[unarchivedDictionary objectForKey:@"generic"]], nil);
+    XCTAssertTrue([[unarchivedDictionary objectForKey:@"canonical"] isEqual:[unarchivedDictionary objectForKey:@"generic"]], @"Unarchived object not equal to archived object");
 
-    STAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"canonical"]], nil);
-    STAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"generic"]], nil);
+    XCTAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"canonical"]], @"Unarchived object not equal to archived object");
+    XCTAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"generic"]], @"Unarchived object not equal to archived object");
 }
 
 - (void)testNullParsing
@@ -595,10 +635,10 @@
 
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
     
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
-    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], @"Unarchived object not equal to archived object");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], @"Unarchived object not equal to archived object");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], @"Unarchived object not equal to archived object");
+    XCTAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], @"Unarchived object not equal to archived object");
 }
 
 
@@ -615,9 +655,9 @@
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
     
     for(NSNumber *number in [[[unarchivedDictionary objectEnumerator] allObjects] valueForKey:@"timeIntervalSince1970"]) {
-        STAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
+        XCTAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
                      number.doubleValue == 1039824000,     // 2002-12-14
-                     nil);
+                      @"Unarchived object not equal to archived object");
     }
 }   
 
@@ -629,14 +669,14 @@
     
     NSString *string = [YACYAMLKeyedArchiver archivedStringWithRootObject:testArray];
     
-    STAssertTrue(string.length != 0, nil);
+    XCTAssertTrue(string.length != 0, @"Zero-length archive string");
     
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:string];
     
     for(NSNumber *number in [unarchivedArray  valueForKey:@"timeIntervalSince1970"]) {
-        STAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
+        XCTAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
                      number.doubleValue == 1039824000,     // 2002-12-14
-                     nil);
+                      @"Unarchived object not equal to archived object");
     }
 }
 
@@ -674,7 +714,7 @@
     
     NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
 
-    STAssertTrue(unarchived.count != 0, nil);
+    XCTAssertTrue(unarchived.count != 0, @"Unexpected count after merge parsing");
 }
 
 - (void)testMergingFromCustomTypes
@@ -694,22 +734,22 @@
     @"    key2: override for key2\n";
     
     NSDictionary *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
-    STAssertTrue(unarchived.count == 3, nil);
+    XCTAssertTrue(unarchived.count == 3);
     
     YACYAMLCustomTypeMerging *original = unarchived[@"original"];
-    STAssertTrue([original isKindOfClass: [YACYAMLCustomTypeMerging class]], nil);
-    STAssertEqualObjects(original.property1, @"this key should be inherited", nil);
-    STAssertEqualObjects(original.property2, @"this key should be overridden", nil);
+    XCTAssertTrue([original isKindOfClass: [YACYAMLCustomTypeMerging class]]);
+    XCTAssertEqualObjects(original.property1, @"this key should be inherited");
+    XCTAssertEqualObjects(original.property2, @"this key should be overridden");
     
     YACYAMLCustomTypeMerging *mergedCustomType = unarchived[@"mergedCustomType"];
-    STAssertTrue([mergedCustomType isKindOfClass: [YACYAMLCustomTypeMerging class]], nil);
-    STAssertEqualObjects(mergedCustomType.property1, @"this key should be inherited", nil);
-    STAssertEqualObjects(mergedCustomType.property2, @"override for key2", nil);
+    XCTAssertTrue([mergedCustomType isKindOfClass: [YACYAMLCustomTypeMerging class]]);
+    XCTAssertEqualObjects(mergedCustomType.property1, @"this key should be inherited");
+    XCTAssertEqualObjects(mergedCustomType.property2, @"override for key2");
     
     NSDictionary *mergedMap = unarchived[@"mergedMap"];
-    STAssertTrue([mergedMap isKindOfClass: [NSDictionary class]], nil);
-    STAssertEqualObjects(mergedMap[@"key1"], @"this key should be inherited", nil);
-    STAssertEqualObjects(mergedMap[@"key2"], @"override for key2", nil);
+    XCTAssertTrue([mergedMap isKindOfClass: [NSDictionary class]]);
+    XCTAssertEqualObjects(mergedMap[@"key1"], @"this key should be inherited");
+    XCTAssertEqualObjects(mergedMap[@"key2"], @"override for key2");
 }
 
 - (void)testYAMLExtensions
@@ -722,26 +762,26 @@
     
     NSDictionary *unarchivedDictionary = [yaml YACYAMLDecode];
     
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
-    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], @"Unexpected result after unarchiving");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], "Unexpected result after unarchiving");
     
     unarchivedDictionary = [yaml YACYAMLDecodeBasic];
     
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
-    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], "Unexpected result after unarchiving");
     
     unarchivedDictionary = [yaml YACYAMLDecodeAll];
     
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], nil);
-    STAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], nil);
-    STAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], nil);
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"empty"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"canonical"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects([NSNull null], [unarchivedDictionary objectForKey:@"english"], "Unexpected result after unarchiving");
+    XCTAssertEqualObjects(@"null key", [unarchivedDictionary objectForKey:[NSNull null]], "Unexpected result after unarchiving");
 
 }
 
-
 @end
+

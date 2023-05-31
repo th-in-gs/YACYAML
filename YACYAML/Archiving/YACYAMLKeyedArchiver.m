@@ -289,10 +289,26 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 #pragma mark - Keyed archiving
 
+- (void)_encodeObject:(id)obj forKey:(NSString *)key
+{
+    // This private method allows the _key_ to be nil
+    // (the public NSCoder method requires a non-NULL key).
+
+    // It seems more correct to not encode the object at all if nil is passed as the object.
+    // When unarchiving, this will result in a nil-return from the unarchiving methods.
+    // There are certainly methods within UIKit that will encode 'nil' and expect
+    // to see 'nil' when unarchiving - as if the key was never encoded.
+    // Note that an _explicit_ NSNull will be encoded.
+    
+    if(obj != nil) {
+        [[_archivingObjectStack lastObject] encodeChild:obj ?: [NSNull null]
+                                                 forKey:key];
+    }
+}
+
 - (void)encodeObject:(id)obj forKey:(NSString *)key
 {
-    [[_archivingObjectStack lastObject] encodeChild:obj ?: [NSNull null]
-                                             forKey:key];
+    [self _encodeObject:obj forKey:key];
 }
 
 - (void)encodeConditionalObject:(id)objv forKey:(NSString *)key
@@ -400,12 +416,12 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
             [NSException raise:YACYAMLUnsupportedTypeException format:@"Tried to encode value of unhandled type"];
 	}
     
-    [self encodeObject:toEncode forKey:nil];
+    [self _encodeObject:toEncode forKey:nil];
 }
 
 - (void)encodeDataObject:(NSData *)data
 {
-    [self encodeObject:data forKey:nil];
+    [self _encodeObject:data forKey:nil];
 }
 
 @end
