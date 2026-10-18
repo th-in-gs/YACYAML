@@ -23,13 +23,13 @@ jobs:
         - macOS-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - run: env | sort
     - name: Install software
       if: ${{ matrix.os == 'macOS-latest' }}
       run: |
-        brew install automake bash coreutils make
+        brew install automake bash coreutils make libtool
         echo "/usr/local/opt/coreutils/libexec/gnubin" >> $GITHUB_PATH
         echo "/usr/local/opt/make/libexec/gnubin" >> $GITHUB_PATH
     - name: Fetch branches

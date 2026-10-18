@@ -273,7 +273,7 @@
  * The tokens BLOCK-SEQUENCE-START and BLOCK-MAPPING-START denote indentation
  * increase that precedes a block collection (cf. the INDENT token in Python).
  * The token BLOCK-END denote indentation decrease that ends a block collection
- * (cf. the DEDENT token in Python).  However YAML has some syntax pecularities
+ * (cf. the DEDENT token in Python).  However YAML has some syntax peculiarities
  * that makes detections of these tokens more complex.
  *
  * The tokens BLOCK-ENTRY, KEY, and VALUE are used to represent the indicators
@@ -477,6 +477,12 @@
  */
 
 #include "yaml_private.h"
+
+/*
+ * Maximum nesting level (defined in parser.c).
+ */
+
+extern int MAX_NESTING_LEVEL;
 
 /*
  * Ensure that the buffer contains the required number of characters.
@@ -1175,6 +1181,12 @@ yaml_parser_increase_flow_level(yaml_parser_t *parser)
         return 0;
     }
 
+    if (!STACK_LIMIT(parser, parser->indents, MAX_NESTING_LEVEL - parser->flow_level)) {
+        return yaml_parser_set_scanner_error(parser,
+                "while increasing flow level", parser->mark,
+                "exceeded maximum nesting depth");
+    }
+
     parser->flow_level++;
 
     return 1;
@@ -1222,6 +1234,12 @@ yaml_parser_roll_indent(yaml_parser_t *parser, ptrdiff_t column,
 
         if (!PUSH(parser, parser->indents, parser->indent))
             return 0;
+
+        if (!STACK_LIMIT(parser, parser->indents, MAX_NESTING_LEVEL - parser->flow_level)) {
+            return yaml_parser_set_scanner_error(parser,
+                    "while increasing block level", parser->mark,
+                    "exceeded maximum nesting depth");
+        }
 
         if (column > INT_MAX) {
             parser->error = YAML_MEMORY_ERROR;
@@ -3287,7 +3305,7 @@ yaml_parser_scan_flow_scalar(yaml_parser_t *parser, yaml_token_t *token,
 
         /* Check if we are at the end of the scalar. */
 
-        /* Fix for crash unitialized value crash
+        /* Fix for crash uninitialized value crash
          * Credit for the bug and input is to OSS Fuzz
          * Credit for the fix to Alex Gaynor
          */
