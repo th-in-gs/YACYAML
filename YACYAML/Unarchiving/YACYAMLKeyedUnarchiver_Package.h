@@ -22,3 +22,4 @@ struct yaml_parser_s;
 + (Class)classForYAMLScalarString:(NSString *)scalarString;
 
 @end
+

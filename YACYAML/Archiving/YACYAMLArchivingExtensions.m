@@ -225,7 +225,7 @@
         
         double fraction = modf([self timeIntervalSinceReferenceDate], (double[]){0.0});
         if(fraction) {
-            [buildTimestamp appendFormat:@".%ld", (long)round(fraction * 1000.0)];
+            [buildTimestamp appendFormat:@".%03ld", (long)round(fraction * 1000.0)];
         }
         
         if(timeZoneOffset == 0) {

@@ -228,42 +228,51 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 - (NSString *)_anchorStringForNumber:(NSUInteger)number
 {
-    /*
-      a = 0
-      z = 25
-      A = 26
-      Z = 51
-     aa = 52
-     ab = 53 etc.
-    */    
+    // Base-52 encoding with alphabet a-z, A-Z.
+    // a = 0, z = 25, A = 26, Z = 51, aa = 52, ab = 53, ...
+    //
+    // Conceptually, this is a bijective base-52 encoding of number + 1,
+    // with the digit values mapped to 1...52. We avoid actually adding 1
+    // so that NSUIntegerMax can be encoded without overflow.
+    //
+    // Maximum buffer length:
+    // A k-character encoding can represent 52 + 52^2 + ... + 52^k
+    // distinct values, numbered from 0 through
+    //
+    //   52 + 52^2 + ... + 52^k - 1 = (52^(k+1) - 52) / 51 - 1.
+    //
+    // NSUInteger has w bits and can represent 2^w distinct values,
+    // from 0 through 2^w - 1. We therefore need the smallest k satisfying
+    //
+    //   (52^(k+1) - 52) / 51 - 1 >= 2^w - 1
+    //       (52^(k+1) - 52) / 51 >= 2^w
+    //
+    // Equivalently:
+    //   k = ceil(log_52(51 * 2^w + 52)) - 1
+    //
+    // 32-bit: k = ceil(log_52(51 * 2^32 + 52)) - 1 = 6
+    // 64-bit: k = ceil(log_52(51 * 2^64 + 52)) - 1 = 12
+    enum {
+        kMaxAnchorDigits = (sizeof(NSUInteger) == 4) ? 6 : 12,
+        _NSUIntegerMustBe32Or64Bit = 1 / (sizeof(NSUInteger) == 4 || sizeof(NSUInteger) == 8)
+    };
     
-    NSString *converted = nil;
+    unichar buffer[kMaxAnchorDigits];
+    NSUInteger n = number;
 
-    NSUInteger value = number;
+    NSUInteger start = kMaxAnchorDigits;
     do {
-        int remainder = value % 52;
-        
-        if (converted && value < 53) {
-            remainder--;
-        }
-        
-        unichar ch;
-        if(remainder < 26) {
-            ch = 'a' + remainder;
-        } else {
-            ch = 'A' + (remainder - 26);
-        }
-        
-        value = (value - remainder) / 52;
-        
-        if(converted) {
-            converted = [NSString stringWithFormat:@"%c%@", ch, converted];
-        } else {
-            converted = [NSString stringWithCharacters:&ch length:1];
-        }
-    } while (value != 0);
-    
-    return converted;
+        NSUInteger remainder = n % 52;
+        buffer[--start] = remainder < 26 ? 'a' + remainder : 'A' + (remainder - 26);
+
+        if (n < 52)
+            break;
+
+        n = n / 52 - 1;
+    } while (YES);
+
+    return [NSString stringWithCharacters:buffer + start
+                                   length:kMaxAnchorDigits - start];
 }
 
 - (NSString *)generateAnchor

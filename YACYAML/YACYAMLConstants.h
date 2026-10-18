@@ -11,3 +11,4 @@
 extern NSString * const YACYAMLUnsupportedTypeException;
 extern NSString * const YACYAMLUnsupportedMethodException;
 extern NSString * const YACYAMLUnsupportedObjectException;
+extern NSString * const YACYAMLAnchorReplacementException;

@@ -8,11 +8,14 @@
 
 #import "YACYAMLTests.h"
 
+#if TARGET_OS_IOS
 #import <UIKit/UIKit.h>
+#endif
 
 #import <libYAML/yaml.h>
 
 #import <YACYAML/YACYAML.h>
+#import <YACYAML/YACYAMLConstants.h>
 
 #import <math.h>
 
@@ -66,6 +69,54 @@
 - (void)encodeWithCoder:(NSCoder *)coder
 {
     [coder encodeObject:nil forKey:@"testSubobject"];
+}
+
+@end
+
+// Test class that replaces itself in initWithCoder: (like CALayer)
+@interface YACYAMLSelfReplacingObject : NSObject <NSCoding>
+
+@property (nonatomic, strong) id child;
+
+@end
+
+@implementation YACYAMLSelfReplacingObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    // Return a DIFFERENT object (simulating CALayer behavior)
+    id replacement = [[NSObject alloc] init];
+    return replacement;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self.child forKey:@"child"];
+}
+
+@end
+
+// Test class that holds a reference to parent (for cycle detection)
+@interface YACYAMLChildWithParentRef : NSObject <NSCoding>
+
+@property (nonatomic, strong) id parentRef;
+
+@end
+
+@implementation YACYAMLChildWithParentRef
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _parentRef = [coder decodeObjectForKey:@"parentRef"];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self.parentRef forKey:@"parentRef"];
 }
 
 @end
@@ -402,7 +453,8 @@
     
     XCTAssertTrue(strcmp(string, newString) == 0, @"Unarchived object not equal to archived object");
 }
-/*
+
+#if TARGET_OS_IOS
 - (void)testUIView
 {
     UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 480)];
@@ -415,24 +467,25 @@
     
     UIView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
     
-    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], nil);
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], @"Unarchived object not equal to archived object");
 }
-*/
+
 - (void)testUIButton
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     button.backgroundColor = [UIColor redColor];
     [button setTitle:@"Tap Me" forState:UIControlStateNormal];
-    
+
     NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:button];
-    
+
     XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
-    
+
     UIView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
-    
+
     XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], @"Unarchived object not equal to archived object");
 }
+#endif
 
 - (void)testNilEncoding
 {
@@ -502,8 +555,8 @@
         }
     }
 
-    XCTAssertEqualObjects(@"adE", [archiver generateAnchor], @"Anchor generation generated unexpected result");
-    XCTAssertEqualObjects(@"adF", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"acE", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+    XCTAssertEqualObjects(@"acF", [archiver generateAnchor], @"Anchor generation generated unexpected result");
 }
 
 - (void)testPositiveIntegerParsing
@@ -603,7 +656,7 @@
 
 - (void)testBinaryParsing
 {
-    NSString *binaryYAML = 
+    NSString *binaryYAML =
         @"canonical: !!binary \"\\\n"
         @" R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5\\\n"
         @" OTk6enp56enmlpaWNjY6Ojo4SEhP/++f/++f/++f/++f/++f/++f/++f/++f/+\\\n"
@@ -616,13 +669,31 @@
         @" AgjoEwnuNAFOhpEMTRiggcz4BNJHrv/zCFcLiwMWYNG84BwwEeECcgggoBADs=\n"
         @"description:\n"
         @" The binary value above is a tiny arrow encoded as a gif image.\n";
-    
+
     NSDictionary *unarchivedDictionary = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:binaryYAML];
 
     XCTAssertTrue([[unarchivedDictionary objectForKey:@"canonical"] isEqual:[unarchivedDictionary objectForKey:@"generic"]], @"Unarchived object not equal to archived object");
 
-    XCTAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"canonical"]], @"Unarchived object not equal to archived object");
-    XCTAssertNotNil([UIImage imageWithData:[unarchivedDictionary objectForKey:@"generic"]], @"Unarchived object not equal to archived object");
+    // Cross-platform image validation using ImageIO (available on both macOS and iOS)
+    NSData *canonicalData = [unarchivedDictionary objectForKey:@"canonical"];
+    NSData *genericData = [unarchivedDictionary objectForKey:@"generic"];
+
+    CGImageSourceRef canonicalSource = CGImageSourceCreateWithData((__bridge CFDataRef)canonicalData, NULL);
+    CGImageSourceRef genericSource = CGImageSourceCreateWithData((__bridge CFDataRef)genericData, NULL);
+
+    XCTAssertNotNil((__bridge id)canonicalSource, @"Failed to create image source from canonical data");
+    XCTAssertNotNil((__bridge id)genericSource, @"Failed to create image source from generic data");
+
+    CGImageRef canonicalImage = CGImageSourceCreateImageAtIndex(canonicalSource, 0, NULL);
+    CGImageRef genericImage = CGImageSourceCreateImageAtIndex(genericSource, 0, NULL);
+
+    XCTAssertNotNil((__bridge id)canonicalImage, @"Failed to create image from canonical data");
+    XCTAssertNotNil((__bridge id)genericImage, @"Failed to create image from generic data");
+
+    CFRelease(canonicalImage);
+    CFRelease(genericImage);
+    CFRelease(canonicalSource);
+    CFRelease(genericSource);
 }
 
 - (void)testNullParsing
@@ -656,7 +727,7 @@
     
     for(NSNumber *number in [[[unarchivedDictionary objectEnumerator] allObjects] valueForKey:@"timeIntervalSince1970"]) {
         XCTAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
-                     number.doubleValue == 1039824000,     // 2002-12-14
+                      number.doubleValue == 1039824000,     // 2002-12-14
                       @"Unarchived object not equal to archived object");
     }
 }   
@@ -665,6 +736,7 @@
 {
     NSArray *testArray = [NSArray arrayWithObjects:[NSDate dateWithTimeIntervalSince1970:1039824000],
                                                    [NSDate dateWithTimeIntervalSince1970:1008385183.1],
+                                                   [NSDate dateWithTimeIntervalSince1970:1008385323.01],
                                                     nil];
     
     NSString *string = [YACYAMLKeyedArchiver archivedStringWithRootObject:testArray];
@@ -674,8 +746,9 @@
     NSArray *unarchivedArray = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:string];
     
     for(NSNumber *number in [unarchivedArray  valueForKey:@"timeIntervalSince1970"]) {
-        XCTAssertTrue(number.doubleValue == 1008385183.1 || // 2001-12-15 2:59:43.10
-                     number.doubleValue == 1039824000,     // 2002-12-14
+        XCTAssertTrue(number.doubleValue == 1039824000 ||
+                      number.doubleValue == 1008385183.1 ||
+                      number.doubleValue == 1008385323.01,
                       @"Unarchived object not equal to archived object");
     }
 }
@@ -783,5 +856,71 @@
 
 }
 
+- (void)testAnchorReplacementHazard
+{
+    // This test verifies that initWithCoder: returning a different object
+    // after an anchor has been resolved triggers an exception.
+    // The YAML encodes a parent object with an anchor, which contains a child
+    // that references the parent via alias (creating a cycle). The parent's
+    // initWithCoder: returns a different object (simulating CALayer pattern).
+
+    // Use !YACYAMLSelfReplacingObject tag to get our custom class
+    NSString *yaml =
+        @"parent: &anchor !YACYAMLSelfReplacingObject\n"
+        @"  child: *anchor\n";  // Child references parent - creates cycle during decode
+
+    // This should trigger the YACYAMLAnchorReplacementException because:
+    // 1. Parent starts decoding, registers anchor "anchor"
+    // 2. Child decodes, resolves anchor "anchor" -> parent's unarchiving object
+    // 3. Parent's initWithCoder: runs, returns different object
+    // 4. _anchorWasResolved is YES -> exception fires
+
+    id result = nil;
+    XCTAssertThrowsSpecificNamed(result = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml],
+                                 NSException,
+                                 YACYAMLAnchorReplacementException,
+                                 @"Should have caught YACYAMLAnchorReplacementException");
+}
+
+- (void)testAnchorNoReplacementSafe
+{
+    // Same cycle structure, but initWithCoder: returns self (normal case).
+    // Should NOT trigger assertion.
+
+    NSString *yaml =
+        @"parent: &anchor\n"
+        @"  child: *anchor\n";  // Standard NSDictionary cycle
+
+    id result = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+    XCTAssertNotNil(result, @"Should unarchive without assertion");
+    NSDictionary *dict = (NSDictionary *)result;
+    id parent = [dict objectForKey:@"parent"];
+    id child = [parent objectForKey:@"child"];
+    XCTAssertEqualObjects(parent, child, @"Cycle should resolve to same object");
+}
+
 @end
 
+@interface YACYAMLNormalObject : NSObject <NSCoding>
+
+@property (nonatomic, strong) id child;
+
+@end
+
+@implementation YACYAMLNormalObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _child = [coder decodeObjectForKey:@"child"];
+    }
+    return self;  // Returns self - normal
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self.child forKey:@"child"];
+}
+
+@end

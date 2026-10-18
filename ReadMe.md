@@ -1,6 +1,6 @@
 # YACYAML
 
-© 2012 James Montgomerie  
+© 2012-2026 James Montgomerie  
 jamie@montgomerie.net, [http://www.blog.montgomerie.net/](http://www.blog.montgomerie.net/)  
 jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http://th.ingsmadeoutofotherthin.gs/)  
 

@@ -12,6 +12,7 @@
 #import "YACYAMLKeyedUnarchiver.h"
 #import "YACYAMLKeyedUnarchiver_Package.h"
 #import "YACYAMLUnarchivingExtensions.h"
+#import "YACYAMLConstants.h"
 
 #import <libYAML/yaml.h>
 #import <objc/message.h>
@@ -19,16 +20,23 @@
 
 @implementation YACYAMLUnarchivingObject {
     __unsafe_unretained YACYAMLKeyedUnarchiver *_unarchiver;
-        
+
     NSArray *_unkeyedChildren;
     NSDictionary *_keyedChildren;
-        
+
     NSUInteger _unkeyedChildIndex;
-    
+
     // See comments in _parseWithParser:... for the purpose of this ivar.
     void *_uninitializedRepresentedObject;
     id _representedObject;
+
+    // Set to YES when another object resolves this object's anchor during decoding.
+    // Used to detect the hazardous case: initWithCoder: returns a different object
+    // AND the anchor was already resolved by a nested object.
+    BOOL _anchorWasResolved;
 }
+
+@synthesize anchorWasResolved = _anchorWasResolved;
 
 - (id)representedObject
 {
@@ -176,15 +184,21 @@
         if(!_unarchiver.isInitWithCoderDisallowed) {
             // No init.  We'll call initWithCoder later (see further comments
             // lower in the method).
-            
-            // ARC seems to get confused if we strongly store an alloced object,
-            // but its -initWithCoder: method, when we later call it, returns a
-            // different object.  CALayer in particular seems to do this a lot.
-            // We therefore bypass ARC when calling -alloc, and assign the
-            // uninitialized object temporarity to an void * ivar, safe in the
-            // knowledge that its retain count is still +1.  We only assign to a
-            // strongly retained ivar later, after calling -initWithCoder: on
-            // the unretained ivar.
+
+            // ARC gets confused if we strongly store an alloc'd object, then
+            // later call -initWithCoder: which may return a DIFFERENT object.
+            // (CALayer does this a lot).
+            //
+            // Per Cocoa convention: if initWithCoder: returns a different object,
+            // it RELEASES the original alloc'd object. So:
+            //   1. alloc -> object A (+1 retain)
+            //   2. initWithCoder: on A -> returns B (≠ A), releases A (retain 0 -> dealloc)
+            //   3. Caller owns B (+1)
+            //
+            // If we stored A in a strong ivar, ARC would try to release A when
+            // overwriting with B at step 3 -> DOUBLE RELEASE CRASH.
+            // Solution: store A in a void* ivar (ARC ignores it), then use
+            // __bridge_transfer when assigning B to the strong ivar.
             _uninitializedRepresentedObject = (__bridge void *)((id(*)(id,SEL))objc_msgSend)(representedClass, @selector(alloc));
         } else {
             // -initWithCoder: is disallowed.  Just present these as a simple
@@ -308,10 +322,22 @@
     // The representedObject was allocated above (ick! - see comment above).
     if(_keyedChildren || _unkeyedChildren) {
         [_unarchiver pushUnarchivingObject:self];
-        void * initializedObject = (__bridge void *)((id(*)(id,SEL,id))objc_msgSend)((__bridge id)_uninitializedRepresentedObject, @selector(initWithCoder:), _unarchiver);
+        id allocatedObject = (__bridge id)_uninitializedRepresentedObject;
+        void * initializedObject = (__bridge void *)((id(*)(id,SEL,id))objc_msgSend)(allocatedObject, @selector(initWithCoder:), _unarchiver);
         _uninitializedRepresentedObject = nil;
+
+        // Detect initWithCoder: returning a different object AFTER anchor was resolved.
+        // This is the hazardous case: nested object resolved our anchor, then initWithCoder:
+        // replaced self. The nested object now holds a stale reference.
+        if (initializedObject != (__bridge void *)allocatedObject && _anchorWasResolved) {
+            [NSException raise:YACYAMLAnchorReplacementException
+                        format:@"initWithCoder: returned a different object (%@ vs %@) after anchor was resolved by a nested object. "
+                               "This breaks cyclic object graph decoding. The nested object holds a stale reference.",
+                        (__bridge id)initializedObject, allocatedObject];
+        }
+
         _representedObject = (__bridge_transfer id)initializedObject;
-        
+
         //(Re-)annotate the new object with the original map if necessary.
         if (shouldAnnotateWithOriginalMap && _keyedChildren) {
             objc_setAssociatedObject(_representedObject, YACYAMLOriginalMapAnnotationKey, _keyedChildren, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -319,7 +345,7 @@
         
         [_unarchiver popUnarchivingObject];
     }
-    
+
     // This is a hack that ensures that we can both return the represented 
     // object for these events as an array, and that nextUnkeyedObject
     // will also work on them.

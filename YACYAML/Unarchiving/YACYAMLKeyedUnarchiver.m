@@ -271,7 +271,11 @@ NSMutableArray *sImplicitScalarClasses = nil;
 
 - (YACYAMLUnarchivingObject *)previouslyInstantiatedUnarchivingObjectForAnchor:(NSString *)anchor
 {
-    return [_anchoredObjects valueForKey:anchor];
+    YACYAMLUnarchivingObject *obj = [_anchoredObjects valueForKey:anchor];
+    if (obj) {
+        obj.anchorWasResolved = YES;
+    }
+    return obj;
 }
 
 

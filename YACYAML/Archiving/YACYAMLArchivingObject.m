@@ -162,7 +162,10 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                 if(string) {
                     // This is non-NULL.
                     stringChars = [string UTF8String];
-                    stringCharsLength = strlen(stringChars);
+                    stringCharsLength = strnlen(stringChars, INT_MAX);
+                    if(stringCharsLength == INT_MAX) {
+                        [NSException raise:YACYAMLUnsupportedObjectException format:@"Attempt made to encode string too large for YAML"];
+                    }
                     if(stringCharsLength) {
                         if(!customTag &&
                            [YACYAMLKeyedUnarchiver classForYAMLScalarString:string]) {
@@ -180,10 +183,6 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                     stringChars = "";
                     stringCharsLength = 0;
                     style = YAML_PLAIN_SCALAR_STYLE;
-                }
-                
-                if(stringCharsLength >= INT_MAX) {
-                    [NSException raise:YACYAMLUnsupportedObjectException format:@"Attempt made to encode string too large for YAML"];
                 }
                 
                 yaml_scalar_event_initialize(&event,

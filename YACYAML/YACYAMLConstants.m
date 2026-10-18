@@ -11,3 +11,4 @@
 NSString * const YACYAMLUnsupportedTypeException = @"YACYAMLUnsupportedTypeException";
 NSString * const YACYAMLUnsupportedMethodException = @"YACYAMLUnsupportedMethodException";
 NSString * const YACYAMLUnsupportedObjectException = @"YACYAMLUnsupportedObjectException";
+NSString * const YACYAMLAnchorReplacementException = @"YACYAMLAnchorReplacementException";

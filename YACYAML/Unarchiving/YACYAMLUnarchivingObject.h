@@ -19,6 +19,7 @@ struct yaml_event_s;
        forUnarchiver:(YACYAMLKeyedUnarchiver *)unarchiver;
 
 @property (nonatomic, strong, readonly) id representedObject;
+@property (nonatomic) BOOL anchorWasResolved;
 
 - (id)nextUnkeyedObject;
 - (id)keyedObjectForKey:(id)key;
