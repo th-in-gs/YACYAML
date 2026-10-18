@@ -10,7 +10,12 @@
 
 #if TARGET_OS_IOS
 #import <UIKit/UIKit.h>
+#elif TARGET_OS_OSX
+#import <AppKit/AppKit.h>
 #endif
+#import <QuartzCore/QuartzCore.h>
+
+#import <ImageIO/ImageIO.h>
 
 #import <libYAML/yaml.h>
 
@@ -73,11 +78,29 @@
 
 @end
 
+// Captures the unarchiver, so tests can inspect its state after an exception.
+static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
+
+// Like YACYAMLSelfReplacingObject, but records the coder it was given.
+@interface YACYAMLCapturingReplacingObject : NSObject <NSCoding>
+@end
+
+@implementation YACYAMLCapturingReplacingObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    gCapturedUnarchiver = (YACYAMLKeyedUnarchiver *)coder;
+    return (id)[[NSObject alloc] init];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+}
+
+@end
+
 // Test class that replaces itself in initWithCoder: (like CALayer)
 @interface YACYAMLSelfReplacingObject : NSObject <NSCoding>
-
-@property (nonatomic, strong) id child;
-
 @end
 
 @implementation YACYAMLSelfReplacingObject
@@ -91,38 +114,71 @@
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-    [coder encodeObject:self.child forKey:@"child"];
 }
 
 @end
 
-// Test class that holds a reference to parent (for cycle detection)
-@interface YACYAMLChildWithParentRef : NSObject <NSCoding>
+// Test class whose initWithCoder: returns self (the normal case)
+@interface YACYAMLNormalObject : NSObject <NSCoding>
 
-@property (nonatomic, strong) id parentRef;
+@property (nonatomic, strong) id child;
 
 @end
 
-@implementation YACYAMLChildWithParentRef
+@implementation YACYAMLNormalObject
 
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
     self = [super init];
     if (self) {
-        _parentRef = [coder decodeObjectForKey:@"parentRef"];
+        _child = [coder decodeObjectForKey:@"child"];
     }
-    return self;
+    return self;  // Returns self - normal
 }
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-    [coder encodeObject:self.parentRef forKey:@"parentRef"];
+    [coder encodeObject:self.child forKey:@"child"];
+}
+
+@end
+
+// A CALayer subclass that replaces itself in -initWithCoder: (the pattern that
+// -initWithCoder: implementations of some Cocoa classes follow), and that can refer
+// to another layer, so that layers can form cycles.
+@interface YACYAMLReplacingLayer : CALayer
+@property (nonatomic, strong) id partner;
+@end
+
+@implementation YACYAMLReplacingLayer
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    YACYAMLReplacingLayer *decoded = [super initWithCoder:coder];
+    
+    // Return a DIFFERENT object, carrying the decoded state over.
+    YACYAMLReplacingLayer *replacement = [[YACYAMLReplacingLayer alloc] init];
+    replacement.name = decoded.name;
+    replacement.bounds = decoded.bounds;
+    replacement.partner = [coder decodeObjectForKey:@"partner"];
+    return replacement;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [super encodeWithCoder:coder];
+    [coder encodeObject:self.partner forKey:@"partner"];
 }
 
 @end
 
 @interface YACYAMLKeyedArchiver (testing)
 - (NSString *)generateAnchor;
+@end
+
+// Package-visible in the library (YACYAMLKeyedUnarchiver_Package.h); redeclared here for tests.
+@interface YACYAMLKeyedUnarchiver (TestAccess)
+- (NSUInteger)unarchivingObjectStackDepth;
 @end
 
 @implementation YACYAMLTests
@@ -487,6 +543,164 @@
 }
 #endif
 
+#if TARGET_OS_OSX
+- (void)testNSView
+{
+    NSView *view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 320, 480)];
+    view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:view];
+    
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
+    
+    NSView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], @"Unarchived object not equal to archived object");
+}
+
+- (void)testNSButton
+{
+    NSButton *button = [NSButton buttonWithTitle:@"Tap Me" target:nil action:nil];
+    button.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:button];
+    
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
+    
+    NSView *unarchivedView = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedView] isEqualToData:data], @"Unarchived object not equal to archived object");
+}
+#endif
+
+- (void)testCALayer
+{
+    CALayer *layer = [CALayer layer];
+    layer.name = @"layer";
+    layer.bounds = CGRectMake(0, 0, 320, 480);
+    layer.position = CGPointMake(10, 20);
+    layer.opacity = 0.5;
+    layer.cornerRadius = 8;
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:layer];
+    
+    XCTAssertTrue(data.length != 0, @"Archived data unexpectely zero length");;
+    
+    CALayer *unarchivedLayer = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    XCTAssertTrue([unarchivedLayer isKindOfClass:[CALayer class]], @"Got %@", unarchivedLayer);
+    XCTAssertEqualObjects(unarchivedLayer.name, @"layer");
+    XCTAssertTrue(CGRectEqualToRect(unarchivedLayer.bounds, CGRectMake(0, 0, 320, 480)));
+    XCTAssertTrue(CGPointEqualToPoint(unarchivedLayer.position, CGPointMake(10, 20)));
+    XCTAssertEqual(unarchivedLayer.opacity, 0.5f);
+    XCTAssertEqual(unarchivedLayer.cornerRadius, (CGFloat)8);
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedLayer] isEqualToData:data], @"Unarchived object not equal to archived object");
+}
+
+- (void)testCALayerHierarchy
+{
+    CALayer *parent = [CALayer layer];
+    parent.name = @"parent";
+    for(int i = 0; i < 3; ++i) {
+        CALayer *child = [CALayer layer];
+        child.name = [NSString stringWithFormat:@"child %d", i];
+        child.bounds = CGRectMake(0, 0, 10 * (i + 1), 10);
+        [parent addSublayer:child];
+    }
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:parent];
+    CALayer *unarchivedParent = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    XCTAssertEqualObjects(unarchivedParent.name, @"parent");
+    XCTAssertEqual(unarchivedParent.sublayers.count, (NSUInteger)3);
+    for(NSUInteger i = 0; i < unarchivedParent.sublayers.count; ++i) {
+        CALayer *child = unarchivedParent.sublayers[i];
+        XCTAssertEqualObjects(child.name, ([NSString stringWithFormat:@"child %lu", (unsigned long)i]));
+        XCTAssertEqual(child.bounds.size.width, (CGFloat)(10 * (i + 1)));
+        XCTAssertEqual(child.superlayer, unarchivedParent, @"Sublayers should be attached to the unarchived parent");
+    }
+    XCTAssertTrue([[YACYAMLKeyedArchiver archivedDataWithRootObject:unarchivedParent] isEqualToData:data], @"Unarchived object not equal to archived object");
+}
+
+- (void)testCALayerSharedReference
+{
+    // The second occurrence is archived as an alias of the first.
+    CALayer *layer = [CALayer layer];
+    layer.name = @"shared";
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:[YACYAMLKeyedArchiver archivedDataWithRootObject:@[layer, layer]]];
+    
+    XCTAssertEqual(unarchived.count, (NSUInteger)2);
+    XCTAssertTrue(unarchived[0] == unarchived[1], @"Both references should be the same object");
+    XCTAssertEqualObjects([unarchived[0] name], @"shared");
+}
+
+- (void)testReplacingLayer
+{
+    YACYAMLReplacingLayer *layer = [YACYAMLReplacingLayer layer];
+    layer.name = @"replaced";
+    layer.bounds = CGRectMake(0, 0, 30, 40);
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:layer];
+    YACYAMLReplacingLayer *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data];
+    
+    XCTAssertTrue([unarchived isKindOfClass:[YACYAMLReplacingLayer class]], @"Got %@", unarchived);
+    XCTAssertEqualObjects(unarchived.name, @"replaced");
+    XCTAssertTrue(CGRectEqualToRect(unarchived.bounds, CGRectMake(0, 0, 30, 40)));
+}
+
+- (void)testReplacingLayerAsSublayer
+{
+    // The replacement must end up in the hierarchy, not the discarded original.
+    CALayer *parent = [CALayer layer];
+    for(int i = 0; i < 3; ++i) {
+        YACYAMLReplacingLayer *child = [YACYAMLReplacingLayer layer];
+        child.name = [NSString stringWithFormat:@"child %d", i];
+        [parent addSublayer:child];
+    }
+    
+    CALayer *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:[YACYAMLKeyedArchiver archivedDataWithRootObject:parent]];
+    
+    XCTAssertEqual(unarchived.sublayers.count, (NSUInteger)3);
+    for(NSUInteger i = 0; i < unarchived.sublayers.count; ++i) {
+        CALayer *child = unarchived.sublayers[i];
+        XCTAssertTrue([child isKindOfClass:[YACYAMLReplacingLayer class]]);
+        XCTAssertEqualObjects(child.name, ([NSString stringWithFormat:@"child %lu", (unsigned long)i]));
+        XCTAssertEqual(child.superlayer, unarchived);
+    }
+}
+
+- (void)testReplacingLayerAliasedAfterReplacement
+{
+    // Later references to a replaced object resolve to the replacement, not the discarded original.
+    YACYAMLReplacingLayer *layer = [YACYAMLReplacingLayer layer];
+    layer.name = @"shared";
+    NSDictionary *root = @{ @"first": layer, @"second": layer, @"third": @[layer] };
+    
+    NSDictionary *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:[YACYAMLKeyedArchiver archivedDataWithRootObject:root]];
+    
+    YACYAMLReplacingLayer *first = unarchived[@"first"];
+    XCTAssertTrue([first isKindOfClass:[YACYAMLReplacingLayer class]], @"Got %@", first);
+    XCTAssertEqualObjects(first.name, @"shared");
+    XCTAssertTrue(unarchived[@"second"] == first, @"Aliases should resolve to the replacement object");
+    XCTAssertTrue([unarchived[@"third"] firstObject] == first, @"Aliases should resolve to the replacement object");
+}
+
+- (void)testReplacingLayerCycleIsRejected
+{
+    // Each layer refers to the other. While one is being decoded, the other resolves its
+    // anchor, and would be left holding the discarded original: this is detected.
+    YACYAMLReplacingLayer *a = [YACYAMLReplacingLayer layer];
+    YACYAMLReplacingLayer *b = [YACYAMLReplacingLayer layer];
+    a.partner = b;
+    b.partner = a;
+    
+    NSData *data = [YACYAMLKeyedArchiver archivedDataWithRootObject:a];
+    XCTAssertThrowsSpecificNamed([YACYAMLKeyedUnarchiver unarchiveObjectWithData:data],
+                                 NSException,
+                                 YACYAMLAnchorReplacementException,
+                                 @"Should have caught YACYAMLAnchorReplacementException");
+}
+
 - (void)testNilEncoding
 {
     YACYAMLTestsNilSubobjectObject *object = [[YACYAMLTestsNilSubobjectObject alloc] init];
@@ -557,6 +771,32 @@
 
     XCTAssertEqualObjects(@"acE", [archiver generateAnchor], @"Anchor generation generated unexpected result");
     XCTAssertEqualObjects(@"acF", [archiver generateAnchor], @"Anchor generation generated unexpected result");
+}
+
+- (void)testAnchorGenerationBoundaries
+{
+    // Anchors are a bijective base-52 encoding: 52 one-letter, then 52^2 two-letter,
+    // then three-letter anchors starting at index 52 + 52^2 = 2756.
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:nil];
+    NSMutableSet *seen = [NSMutableSet set];
+    NSCharacterSet *notLetters = [[NSCharacterSet letterCharacterSet] invertedSet];
+    
+    for(NSUInteger i = 0; i < 60000; ++i) {
+        NSString *anchor = [archiver generateAnchor];
+        
+        if(i == 2703) {
+            XCTAssertEqualObjects(anchor, @"YZ", @"Anchor at index 2703");
+        } else if(i == 2755) {
+            XCTAssertEqualObjects(anchor, @"ZZ", @"Last two-letter anchor");
+        } else if(i == 2756) {
+            XCTAssertEqualObjects(anchor, @"aaa", @"First three-letter anchor");
+        }
+        
+        XCTAssertEqual([anchor rangeOfCharacterFromSet:notLetters].location, (NSUInteger)NSNotFound,
+                       @"Anchor %lu (%@) contains a non-letter", (unsigned long)i, anchor);
+        XCTAssertFalse([seen containsObject:anchor], @"Anchor %lu (%@) is a duplicate", (unsigned long)i, anchor);
+        [seen addObject:anchor];
+    }
 }
 
 - (void)testPositiveIntegerParsing
@@ -690,10 +930,10 @@
     XCTAssertNotNil((__bridge id)canonicalImage, @"Failed to create image from canonical data");
     XCTAssertNotNil((__bridge id)genericImage, @"Failed to create image from generic data");
 
-    CFRelease(canonicalImage);
-    CFRelease(genericImage);
-    CFRelease(canonicalSource);
-    CFRelease(genericSource);
+    if(canonicalImage) CFRelease(canonicalImage);
+    if(genericImage) CFRelease(genericImage);
+    if(canonicalSource) CFRelease(canonicalSource);
+    if(genericSource) CFRelease(genericSource);
 }
 
 - (void)testNullParsing
@@ -753,6 +993,324 @@
     }
 }
 
+
+- (NSString *)archivedScalarForDate:(NSDate *)date
+{
+    // Archive a one-element array and extract the timestamp scalar from "- <scalar>\n".
+    NSString *archive = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[date]];
+    NSRange start = [archive rangeOfString:@"- "];
+    XCTAssertNotEqual(start.location, (NSUInteger)NSNotFound, @"Unexpected archive: %@", archive);
+    return [[archive substringFromIndex:NSMaxRange(start)] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+- (void)testDateArchivingMilliseconds
+{
+    // Fractions are zero-padded to three digits.
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSince1970:1008385323.01]],
+                          @"2001-12-15T03:02:03.010Z");
+    // Dates before the reference date (2001-01-01) have negative reference intervals.
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSinceReferenceDate:-0.5]],
+                          @"2000-12-31T23:59:59.500Z");
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSinceReferenceDate:-0.05]],
+                          @"2000-12-31T23:59:59.950Z");
+    // Fractions beyond milliseconds are rounded, not truncated.
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSinceReferenceDate:100.1236]],
+                          @"2001-01-01T00:01:40.124Z");
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSinceReferenceDate:100.9994]],
+                          @"2001-01-01T00:01:40.999Z");
+    // A fraction that rounds up to 1000ms must carry into the seconds.
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSinceReferenceDate:10.9996]],
+                          @"2001-01-01T00:00:11Z");
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSinceReferenceDate:-10.0004]],
+                          @"2000-12-31T23:59:50Z");
+}
+
+
+- (void)testDateMillisecondRoundTrip
+{
+    NSArray *intervals = @[@(-0.5), @(-0.05), @(-10.0004), @(10.9996), @(30077983.1), @(-86400.001)];
+    for(NSNumber *interval in intervals) {
+        // Dates are archived to millisecond precision.
+        NSTimeInterval expected = round(interval.doubleValue * 1000.0) / 1000.0;
+        NSDate *date = [NSDate dateWithTimeIntervalSinceReferenceDate:interval.doubleValue];
+        NSString *archive = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[date]];
+        NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archive];
+        XCTAssertEqual(unarchived.count, (NSUInteger)1, @"%@", archive);
+        XCTAssertEqualWithAccuracy([unarchived[0] timeIntervalSinceReferenceDate], expected, 0.0005, @"Round trip of %@ via %@", interval, archive);
+    }
+}
+
+- (void)testDateNegativeTimeZoneWithMinutes
+{
+    // 2001-12-15T02:59:43Z expressed in other zones.
+    NSDate *expected = [NSDate dateWithTimeIntervalSince1970:1008385183];
+    for(NSString *string in @[@"2001-12-14T21:29:43-05:30",
+                              @"2001-12-15T03:29:43+00:30",
+                              @"2001-12-15T02:59:43-00:00"]) {
+        NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[NSString stringWithFormat:@"- %@\n", string]];
+        XCTAssertEqualObjects(unarchived.firstObject, expected, @"%@", string);
+    }
+}
+
+- (id)unarchivedScalar:(NSString *)scalar
+{
+    // Unarchive a one-element sequence "- <scalar>\n" and return its element.
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[NSString stringWithFormat:@"- %@\n", scalar]];
+    XCTAssertEqual(unarchived.count, (NSUInteger)1, @"Unexpected result for %@: %@", scalar, unarchived);
+    return unarchived.firstObject;
+}
+
+- (void)testDateParsingForms
+{
+    // Each form is checked against its own expected time (seconds since 1970).
+    NSDictionary *expectations = @{
+        // Canonical, ISO 8601, space separated, and no time zone (UTC) forms.
+        @"2001-12-15T02:59:43.1Z":            @1008385183.1,
+        @"2001-12-14t21:59:43.10-05:00":      @1008385183.1,
+        @"2001-12-14 21:59:43.10 -5":         @1008385183.1,
+        @"2001-12-15 2:59:43.10":             @1008385183.1,
+        @"2001-12-15 3:29:43.10+00:30":       @1008385183.1,
+        // Date only (midnight UTC).
+        @"2002-12-14":                        @1039824000,
+        @"1970-01-01":                        @0,
+        @"1900-01-01":                        @-2208988800,
+        // Single digit month, day and hour.
+        @"2001-1-2T3:04:05Z":                 @978404645,
+        // Fractions.
+        @"2001-12-15T02:59:43Z":              @1008385183,
+        @"2001-12-15T02:59:43.Z":             @1008385183,
+        @"2001-12-15T02:59:43.123456Z":       @1008385183.123456,
+        // Leap day and range extremes.
+        @"2000-02-29T12:34:56Z":              @951827696,
+        @"9999-12-31T23:59:59Z":              @253402300799,
+        // Time zone forms.
+        @"2001-12-15T02:59:43+00:00":         @1008385183,
+        @"2001-12-15T05:59:43+3":             @1008385183,
+        @"2001-12-14T21:59:43-05":            @1008385183,
+        @"2001-12-15T08:29:43+05:30":         @1008385183,
+        @"2001-12-14T22:29:43-04:30":         @1008385183,
+        @"2001-12-15T02:59:43 Z":             @1008385183,
+        @"2001-12-15T02:59:43\t+0":           @1008385183,
+        @"2001-12-15T02:59:43-00:30":         @1008386983,
+        // Offsets that cross a day, month or year boundary.
+        @"2001-12-31T23:59:59-01:00":         @1009846799,
+        @"2000-02-29T23:30:00-01:00":         @951870600,
+    };
+    
+    [expectations enumerateKeysAndObjectsUsingBlock:^(NSString *string, NSNumber *expected, BOOL *stop) {
+        id date = [self unarchivedScalar:string];
+        XCTAssertTrue([date isKindOfClass:[NSDate class]], @"%@ should parse as a date, got %@", string, date);
+        XCTAssertEqualWithAccuracy([date timeIntervalSince1970], expected.doubleValue, 0.0000005,
+                                   @"Wrong time parsed from %@", string);
+    }];
+}
+
+- (void)testNonDatesAreNotParsedAsDates
+{
+    for(NSString *string in @[@"2001-12", @"12:30:00", @"2001/12/14", @"20011214", @"not-a-date", @"2001-12-14-3"]) {
+        id value = [self unarchivedScalar:string];
+        XCTAssertFalse([value isKindOfClass:[NSDate class]], @"%@ should not parse as a date", string);
+    }
+}
+
+- (void)testDateLikeStringsRoundTripAsStrings
+{
+    NSArray *strings = @[@"2001-12-14", @"2001-12-15T02:59:43Z", @"2001-12-14 21:59:43.10 -5"];
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:strings]];
+    XCTAssertEqualObjects(unarchived, strings, @"Strings that look like dates should stay strings");
+}
+
+- (void)testDateArchivingExactStrings
+{
+    NSDictionary *expectations = @{
+        // Midnight UTC is written as a plain date.
+        @0:                @"1970-01-01",
+        @1039824000:       @"2002-12-14",
+        @-2208988800:      @"1900-01-01",
+        // Otherwise a full UTC timestamp.
+        @951827696:        @"2000-02-29T12:34:56Z",
+        @946684799:        @"1999-12-31T23:59:59Z",
+        @253402300799:     @"9999-12-31T23:59:59Z",
+        @-14182940:        @"1969-07-20T20:17:40Z",
+        @2147483648:       @"2038-01-19T03:14:08Z",
+        // Fractions, zero padded to three digits.
+        @1008385183.1:     @"2001-12-15T02:59:43.100Z",
+        @1008385183.001:   @"2001-12-15T02:59:43.001Z",
+        @1008385183.999:   @"2001-12-15T02:59:43.999Z",
+        @-14182940.25:     @"1969-07-20T20:17:39.750Z",
+    };
+    
+    [expectations enumerateKeysAndObjectsUsingBlock:^(NSNumber *interval, NSString *expected, BOOL *stop) {
+        XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSince1970:interval.doubleValue]],
+                              expected, @"Wrong archived form of %@", interval);
+    }];
+}
+
+- (void)testDateArchivingMidnightWithFraction
+{
+    // A date at midnight UTC that has a fraction of a second must not be written as a plain date.
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSince1970:1039824000.5]],
+                          @"2002-12-14T00:00:00.500Z");
+    XCTAssertEqualObjects([self archivedScalarForDate:[NSDate dateWithTimeIntervalSince1970:-0.001]],
+                          @"1969-12-31T23:59:59.999Z");
+}
+
+- (void)testDateArchivingFractionBoundaries
+{
+    // Reference-date based, so that expected fractions are exact in binary where possible.
+    // Each pair: seconds since 2001-01-01T00:00:00Z, expected archived form.
+    NSArray *cases = @[
+        // Smallest and largest millisecond fractions.
+        @[@0.001,     @"2001-01-01T00:00:00.001Z"],
+        @[@0.999,     @"2001-01-01T00:00:00.999Z"],
+        // Fractions that need padding.
+        @[@0.01,      @"2001-01-01T00:00:00.010Z"],
+        @[@0.1,       @"2001-01-01T00:00:00.100Z"],
+        @[@0.5,       @"2001-01-01T00:00:00.500Z"],
+        // Sub-millisecond values round to the nearest millisecond.
+        @[@0.0004,    @"2001-01-01"],
+        @[@0.0006,    @"2001-01-01T00:00:00.001Z"],
+        @[@0.9994,    @"2001-01-01T00:00:00.999Z"],
+        @[@0.9996,    @"2001-01-01T00:00:01Z"],
+        // Rounding up carries through minute, hour, day and month boundaries. A carry that
+        // lands exactly on midnight gives a plain date.
+        @[@59.9996,   @"2001-01-01T00:01:00Z"],
+        @[@3599.9996, @"2001-01-01T01:00:00Z"],
+        @[@86399.9996, @"2001-01-02"],
+        @[@2678399.9996, @"2001-02-01"],
+        // Fractions just before the midnight, which is written as a plain date.
+        @[@86399.999, @"2001-01-01T23:59:59.999Z"],
+        @[@86400.001, @"2001-01-02T00:00:00.001Z"],
+        // Negative reference intervals (before 2001-01-01).
+        @[@-0.001,    @"2000-12-31T23:59:59.999Z"],
+        @[@-0.999,    @"2000-12-31T23:59:59.001Z"],
+        @[@-0.0004,   @"2001-01-01"],
+        @[@-0.0006,   @"2000-12-31T23:59:59.999Z"],
+        @[@-0.9996,   @"2000-12-31T23:59:59Z"],
+        @[@-86399.9996, @"2000-12-31"],
+        @[@-31622399.9996, @"2000-01-01"],
+        // Midnight with a fraction is not a plain date.
+        @[@86400.5,   @"2001-01-02T00:00:00.500Z"],
+        @[@-86399.5,  @"2000-12-31T00:00:00.500Z"],
+    ];
+    
+    for(NSArray *testCase in cases) {
+        NSDate *date = [NSDate dateWithTimeIntervalSinceReferenceDate:[testCase[0] doubleValue]];
+        XCTAssertEqualObjects([self archivedScalarForDate:date], testCase[1],
+                              @"Wrong archived form of reference interval %@", testCase[0]);
+    }
+}
+
+- (void)testDateFractionParsing
+{
+    // Fractions of any length. Each pair: scalar, expected seconds since 2001-12-15T02:59:43Z.
+    NSArray *cases = @[
+        @[@"2001-12-15T02:59:43.1Z",          @0.1],
+        @[@"2001-12-15T02:59:43.10Z",         @0.1],
+        @[@"2001-12-15T02:59:43.100Z",        @0.1],
+        @[@"2001-12-15T02:59:43.001Z",        @0.001],
+        @[@"2001-12-15T02:59:43.999Z",        @0.999],
+        @[@"2001-12-15T02:59:43.0Z",          @0],
+        @[@"2001-12-15T02:59:43.000Z",        @0],
+        @[@"2001-12-15T02:59:43.5",           @0.5],
+        @[@"2001-12-15T02:59:43.5+00:00",     @0.5],
+        @[@"2001-12-15 02:59:43.25 Z",        @0.25],
+        @[@"2001-12-15T02:59:43.0000001Z",    @0.0000001],
+        @[@"2001-12-15T02:59:43.123456789Z",  @0.123456789],
+        @[@"2001-12-14T21:59:43.5-05:00",     @0.5],
+        @[@"2001-12-15T08:29:43.5+05:30",     @0.5],
+        // A fraction does not alter the whole-second part, or leak into the next unit.
+        @[@"2001-12-15T02:59:44.999Z",        @1.999],
+        @[@"2001-12-15T02:59:42.999Z",        @-0.001],
+    ];
+    
+    NSDate *base = [NSDate dateWithTimeIntervalSince1970:1008385183];
+    for(NSArray *testCase in cases) {
+        id date = [self unarchivedScalar:testCase[0]];
+        XCTAssertTrue([date isKindOfClass:[NSDate class]], @"%@ should parse as a date, got %@", testCase[0], date);
+        XCTAssertEqualWithAccuracy([date timeIntervalSinceDate:base], [testCase[1] doubleValue], 0.0000005,
+                                   @"Wrong fraction parsed from %@", testCase[0]);
+    }
+}
+
+- (void)testDateFractionRoundTripAtEveryMillisecond
+{
+    // All 1000 millisecond fractions, in a second of a pre-2001 date, a 2001 date, and a midnight.
+    NSArray *baseIntervals = @[@-86400, @978307200, @1039824000, @-2208988800];
+    for(NSNumber *base in baseIntervals) {
+        NSMutableArray *dates = [NSMutableArray array];
+        for(int ms = 0; ms < 1000; ++ms) {
+            [dates addObject:[NSDate dateWithTimeIntervalSince1970:base.doubleValue + ms / 1000.0]];
+        }
+        
+        NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:dates]];
+        XCTAssertEqual(unarchived.count, dates.count, @"Base %@", base);
+        
+        for(NSUInteger ms = 0; ms < MIN(unarchived.count, dates.count); ++ms) {
+            XCTAssertEqualWithAccuracy([unarchived[ms] timeIntervalSince1970], base.doubleValue + ms / 1000.0, 0.0005,
+                                       @"Round trip failed for base %@ plus %lu ms", base, (unsigned long)ms);
+        }
+    }
+}
+
+- (void)testDateRoundTripBroad
+{
+    // A deterministic spread of dates, roughly 1906 to 2096, at millisecond precision.
+    NSMutableArray *dates = [NSMutableArray array];
+    NSMutableArray *intervals = [NSMutableArray array];
+    uint64_t state = 0x2545F4914F6CDD1DULL;
+    for(int i = 0; i < 2000; ++i) {
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        double fraction = (double)(state >> 11) / (double)(1ULL << 53);
+        NSTimeInterval interval = round((fraction * 6.0e9 - 3.0e9) * 1000.0) / 1000.0;
+        [intervals addObject:@(interval)];
+        [dates addObject:[NSDate dateWithTimeIntervalSinceReferenceDate:interval]];
+    }
+    
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:dates]];
+    XCTAssertEqual(unarchived.count, dates.count);
+    
+    for(NSUInteger i = 0; i < MIN(unarchived.count, dates.count); ++i) {
+        XCTAssertEqualWithAccuracy([unarchived[i] timeIntervalSinceReferenceDate], [intervals[i] doubleValue], 0.0005,
+                                   @"Round trip failed for reference interval %@", intervals[i]);
+    }
+}
+
+- (void)testDateRoundTripInContainers
+{
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:1008385183.1];
+    NSDate *midnight = [NSDate dateWithTimeIntervalSince1970:1039824000];
+    NSDictionary *root = @{ @"single": date,
+                            @"midnight": midnight,
+                            @"nested": @{ @"array": @[date, midnight] },
+                            date: @"date as a key" };
+    
+    NSDictionary *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:root]];
+    
+    XCTAssertEqualWithAccuracy([unarchived[@"single"] timeIntervalSince1970], 1008385183.1, 0.0005);
+    XCTAssertEqualWithAccuracy([unarchived[@"midnight"] timeIntervalSince1970], 1039824000, 0.0005);
+    NSArray *nested = unarchived[@"nested"][@"array"];
+    XCTAssertEqual(nested.count, (NSUInteger)2);
+    XCTAssertEqualWithAccuracy([nested[0] timeIntervalSince1970], 1008385183.1, 0.0005);
+    XCTAssertEqualWithAccuracy([nested[1] timeIntervalSince1970], 1039824000, 0.0005);
+    
+    NSDate *keyDate = nil;
+    for(id key in unarchived) {
+        if([key isKindOfClass:[NSDate class]]) {
+            keyDate = key;
+        }
+    }
+    XCTAssertNotNil(keyDate, @"A date used as a dictionary key should be unarchived as a date");
+    XCTAssertEqualObjects(unarchived[keyDate], @"date as a key");
+}
+
+- (void)testDateRoundTripAsRootObject
+{
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:1008385183.1];
+    id unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:date]];
+    XCTAssertTrue([unarchived isKindOfClass:[NSDate class]], @"Got %@", unarchived);
+    XCTAssertEqualWithAccuracy([unarchived timeIntervalSince1970], 1008385183.1, 0.0005);
+}
 
 - (void)testMergeParsing
 {
@@ -875,11 +1433,28 @@
     // 3. Parent's initWithCoder: runs, returns different object
     // 4. _anchorWasResolved is YES -> exception fires
 
-    id result = nil;
-    XCTAssertThrowsSpecificNamed(result = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml],
+    XCTAssertThrowsSpecificNamed([YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml],
                                  NSException,
                                  YACYAMLAnchorReplacementException,
                                  @"Should have caught YACYAMLAnchorReplacementException");
+}
+
+- (void)testAnchorReplacementExceptionKeepsStackBalanced
+{
+    NSString *yaml =
+        @"parent: &anchor !YACYAMLCapturingReplacingObject\n"
+        @"  child: *anchor\n";
+
+    gCapturedUnarchiver = nil;
+    XCTAssertThrowsSpecificNamed([YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml],
+                                 NSException,
+                                 YACYAMLAnchorReplacementException,
+                                 @"Should have caught YACYAMLAnchorReplacementException");
+
+    XCTAssertNotNil(gCapturedUnarchiver, @"initWithCoder: should have run");
+    XCTAssertEqual([gCapturedUnarchiver unarchivingObjectStackDepth], (NSUInteger)0,
+                   @"Unarchiving object stack should be balanced after exception");
+    gCapturedUnarchiver = nil;
 }
 
 - (void)testAnchorNoReplacementSafe
@@ -888,39 +1463,16 @@
     // Should NOT trigger assertion.
 
     NSString *yaml =
-        @"parent: &anchor\n"
-        @"  child: *anchor\n";  // Standard NSDictionary cycle
+        @"parent: &anchor !YACYAMLNormalObject\n"
+        @"  child: *anchor\n";
 
     id result = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
     XCTAssertNotNil(result, @"Should unarchive without assertion");
     NSDictionary *dict = (NSDictionary *)result;
-    id parent = [dict objectForKey:@"parent"];
-    id child = [parent objectForKey:@"child"];
+    YACYAMLNormalObject *parent = [dict objectForKey:@"parent"];
+    XCTAssertTrue([parent isKindOfClass:[YACYAMLNormalObject class]], @"Unexpected parent: %@", parent);
+    id child = parent.child;
     XCTAssertEqualObjects(parent, child, @"Cycle should resolve to same object");
-}
-
-@end
-
-@interface YACYAMLNormalObject : NSObject <NSCoding>
-
-@property (nonatomic, strong) id child;
-
-@end
-
-@implementation YACYAMLNormalObject
-
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super init];
-    if (self) {
-        _child = [coder decodeObjectForKey:@"child"];
-    }
-    return self;  // Returns self - normal
-}
-
-- (void)encodeWithCoder:(NSCoder *)coder
-{
-    [coder encodeObject:self.child forKey:@"child"];
 }
 
 @end

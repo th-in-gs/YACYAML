@@ -17,6 +17,7 @@ struct yaml_parser_s;
 
 - (void)pushUnarchivingObject:(YACYAMLUnarchivingObject *)archivingObject;
 - (void)popUnarchivingObject;
+- (NSUInteger)unarchivingObjectStackDepth;
 
 + (Class)classForYAMLTag:(NSString *)tag;
 + (Class)classForYAMLScalarString:(NSString *)scalarString;

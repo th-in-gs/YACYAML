@@ -200,7 +200,10 @@
     NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
     calendar.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
      
-    NSDateComponents *components = [calendar components:units fromDate:self];
+    // Round to milliseconds first, so that any carry into the seconds is in the components.
+    // (Adding 0.0 turns a negative zero, from rounding e.g. -0.0004, into a positive one.)
+    NSTimeInterval interval = round([self timeIntervalSinceReferenceDate] * 1000.0) / 1000.0 + 0.0;
+    NSDateComponents *components = [calendar components:units fromDate:[NSDate dateWithTimeIntervalSinceReferenceDate:interval]];
     
     long year =   [components year];
     long month =  [components month];
@@ -215,15 +218,16 @@
 
     NSString *dateString = [NSString stringWithFormat:@"%04ld-%02ld-%02ld", year, month, day];
 
+    double fraction = interval - floor(interval);
+
     if(hour == 0 && minute == 0 && second == 0 && 
-       timeZoneOffset == 0) {
+       fraction == 0 && timeZoneOffset == 0) {
      
         ret = dateString;
     } else {
         NSMutableString *buildTimestamp = [dateString mutableCopy];
         [buildTimestamp appendFormat:@"T%02ld:%02ld:%02ld", hour, minute, second];
         
-        double fraction = modf([self timeIntervalSinceReferenceDate], (double[]){0.0});
         if(fraction) {
             [buildTimestamp appendFormat:@".%03ld", (long)round(fraction * 1000.0)];
         }

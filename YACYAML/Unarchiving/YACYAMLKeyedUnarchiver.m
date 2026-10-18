@@ -289,6 +289,11 @@ NSMutableArray *sImplicitScalarClasses = nil;
     [_unarchivingObjectStack removeLastObject];
 }
 
+- (NSUInteger)unarchivingObjectStackDepth
+{
+    return _unarchivingObjectStack.count;
+}
+
 
 #pragma mark - Keyed unarchiving
 

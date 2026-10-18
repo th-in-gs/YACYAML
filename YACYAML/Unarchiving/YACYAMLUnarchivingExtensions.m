@@ -469,7 +469,9 @@ static NSRegularExpression *YACYAMLTimestampComplicatedRegularExpression(void)
                 NSRange timeZoneMinutesOffsetRange = [match rangeAtIndex:15];
                 if(timeZoneMinutesOffsetRange.length) {
                     NSInteger timeZoneMinutesOffset = [[string substringWithRange:timeZoneMinutesOffsetRange] integerValue];
-                    secondsFromGMT += timeZoneMinutesOffset * 60;
+                    // The sign applies to the minutes too ("-00:30" has a zero hours value).
+                    BOOL negative = [string characterAtIndex:timeZoneHoursOffsetRange.location] == '-';
+                    secondsFromGMT += (negative ? -1 : 1) * timeZoneMinutesOffset * 60;
                 }
             } 
         } 
