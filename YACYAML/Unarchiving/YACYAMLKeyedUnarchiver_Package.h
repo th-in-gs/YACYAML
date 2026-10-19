@@ -21,6 +21,8 @@ struct yaml_parser_s;
 
 @property (nonatomic, readonly) BOOL localTagsDisallowed;
 
+- (id)_decodeRootObjectWithError:(NSError **)error;
+
 + (Class)classForYAMLTag:(NSString *)tag;
 + (Class)classForYAMLScalarString:(NSString *)scalarString;
 

@@ -2271,4 +2271,27 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     XCTAssertTrue([archived rangeOfString:@"[]"].location != NSNotFound, @"Got %@", archived);
 }
 
+- (void)testUnarchivedObjectOfClass
+{
+    // As for NSKeyedUnarchiver, the decoded object has to be of the class (or a subclass).
+    // (It's checked after the YAML is decoded, so it doesn't limit what is instantiated.)
+    NSData *data = [@"- a\n- b\n" dataUsingEncoding:NSUTF8StringEncoding];
+    NSError *error = nil;
+    NSArray *expected = @[ @"a", @"b" ];
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchivedObjectOfClass:[NSArray class] fromData:data error:&error], expected);
+    XCTAssertNil(error);
+    XCTAssertNotNil([YACYAMLKeyedUnarchiver unarchivedObjectOfClass:[NSObject class] fromData:data error:&error]);
+    XCTAssertNotNil([YACYAMLKeyedUnarchiver unarchivedObjectOfClass:[NSArray class]
+                                                           fromData:data
+                                                            options:YACYAMLKeyedUnarchiverOptionDisallowLocalTags
+                                                              error:&error]);
+    
+    XCTAssertNil([YACYAMLKeyedUnarchiver unarchivedObjectOfClass:[NSDictionary class] fromData:data error:&error]);
+    XCTAssertEqualObjects(error.domain, NSCocoaErrorDomain);
+    XCTAssertEqual(error.code, NSCoderReadCorruptError);
+    
+    // And it is fine with NULL for the error.
+    XCTAssertNil([YACYAMLKeyedUnarchiver unarchivedObjectOfClass:[NSDictionary class] fromData:data error:NULL]);
+}
+
 @end

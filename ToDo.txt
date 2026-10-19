@@ -47,6 +47,15 @@ regexes (advantage of regexes is that it's easy to verify that they match
 the specs exactly).
 
 
+Swift: the Swift interface is what the Objective-C headers import as.  A Swift
+overlay (Swift source in the library) could add what NSKeyedArchiver and
+NSKeyedUnarchiver have in Swift: the generic, typed
+unarchivedObject(ofClass:from:) -> T?, and Codable support (encodeEncodable(_:forKey:),
+decodeDecodable(_:forKey:) and decodeTopLevelDecodable(_:forKey:)), perhaps with
+a YAMLEncoder and YAMLDecoder.  Until then unarchivedObject(ofClass:from:) returns
+Any, and has to be cast.
+
+
 YAML 1.2.2 update:
 
 Decide whether to move to the 1.2 Core schema (spec section 10.3.2), or to add

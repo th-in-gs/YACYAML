@@ -51,6 +51,27 @@ If you'd rather not let any local tag (YAML's name for a tag that starts with a 
 This limits which objects get created.  It isn't a sandbox - it doesn't, for example, limit the size of the input.
 
 
+## Errors, and using YACYAML from Swift
+
+The convenience methods return `nil` when YAML can't be read, and raise an exception for objects that can't be encoded or decoded.  Variants that take an `NSError **` report what went wrong instead.  The errors are in `NSCocoaErrorDomain`, with the codes that `NSKeyedArchiver` and `NSKeyedUnarchiver` use (`NSCoderReadCorruptError` for YAML that can't be read, `NSCoderInvalidValueError` for an object that can't be written, and the `NSFile…` errors, with the path, for a file that can't be opened or written), so they can be handled in the same way.  The line and column of a parse error, or of the object that couldn't be decoded, are in the `userInfo`, and the error underneath (`NSUnderlyingErrorKey`) is in `YACYAMLErrorDomain`.
+
+```ObjC
+NSError *error = nil;
+id decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml error:&error];
+```
+
+Swift imports these as `throws` methods, the options as `OptionSet`s, and hides the variants that they replace:
+
+```Swift
+let decoded = try YACYAMLKeyedUnarchiver.unarchivedObject(from: yaml)
+let array = try YACYAMLKeyedUnarchiver.unarchivedObject(ofClass: NSArray.self, from: data)
+let yaml = try YACYAMLKeyedArchiver.archivedString(withRootObject: object)
+let safer = try YACYAMLKeyedUnarchiver.unarchivedObject(from: yaml, options: [.disallowLocalTags])
+```
+
+Application classes that you want to be written with a tag need an `@objc(Name)` attribute in Swift, or the tag will include the module name.
+
+
 ## What's YACYAML's rationale?
 
 Read more at [http://www.blog.montgomerie.net/yacyaml](http://www.blog.montgomerie.net/yacyaml)

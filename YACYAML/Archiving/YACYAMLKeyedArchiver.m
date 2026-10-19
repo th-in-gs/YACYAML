@@ -10,6 +10,7 @@
 #import "YACYAMLKeyedArchiver_Package.h"
 
 #import "YACYAMLConstants.h"
+#import "YACYAML_Package.h"
 
 #import "YACYAMLArchivingObject.h"
 
@@ -71,11 +72,55 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
                                     options:YACYAMLKeyedArchiverOptionNone];
 }
 
++ (NSData *)archivedDataWithRootObject:(id)rootObject
+                               options:(YACYAMLKeyedArchiverOptions)options
+                                 error:(NSError **)error
+{
+    NSMutableData *ret = [[NSMutableData alloc] init];
+    YACYAMLKeyedArchiver *archiver = [[[self class] alloc] initForWritingWithMutableData:ret options:options];
+    @try {
+        [archiver encodeRootObject:rootObject];
+    } @catch(NSException *exception) {
+        NSError *failure = YACYAMLErrorForException(exception, YES);
+        if(!failure) {
+            @throw;
+        }
+        if(error) {
+            *error = failure;
+        }
+        return nil;
+    }
+    return [archiver finishEncodingWithError:error] ? ret : nil;
+}
+
 + (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options
 {
     return [[NSString alloc] initWithData:[self archivedDataWithRootObject:rootObject 
                                                                    options:options]
                                  encoding:NSUTF8StringEncoding];
+}
+
++ (NSData *)archivedDataWithRootObject:(id)rootObject error:(NSError **)error
+{
+    return [self archivedDataWithRootObject:rootObject options:YACYAMLKeyedArchiverOptionNone error:error];
+}
+
++ (NSString *)archivedStringWithRootObject:(id)rootObject error:(NSError **)error
+{
+    return [self archivedStringWithRootObject:rootObject options:YACYAMLKeyedArchiverOptionNone error:error];
+}
+
++ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path error:(NSError **)error
+{
+    return [self archiveRootObject:rootObject toFile:path options:YACYAMLKeyedArchiverOptionNone error:error];
+}
+
++ (NSString *)archivedStringWithRootObject:(id)rootObject
+                                   options:(YACYAMLKeyedArchiverOptions)options
+                                     error:(NSError **)error
+{
+    NSData *data = [self archivedDataWithRootObject:rootObject options:options error:error];
+    return data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
 }
 
 + (NSString *)archivedStringWithRootObject:(id)rootObject
@@ -96,6 +141,30 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
         success = YES;
     }
     return success;
+}
+
++ (BOOL)archiveRootObject:(id)rootObject
+                   toFile:(NSString *)path
+                  options:(YACYAMLKeyedArchiverOptions)options
+                    error:(NSError **)error
+{
+    YACYAMLKeyedArchiver *archiver = [[[self class] alloc] initForWritingToFile:path options:options error:error];
+    if(!archiver) {
+        return NO;
+    }
+    @try {
+        [archiver encodeRootObject:rootObject];
+    } @catch(NSException *exception) {
+        NSError *failure = YACYAMLErrorForException(exception, YES);
+        if(!failure) {
+            @throw;
+        }
+        if(error) {
+            *error = failure;
+        }
+        return NO;
+    }
+    return [archiver finishEncodingWithError:error];
 }
 
 + (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path
@@ -158,18 +227,30 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
 }
 
 
-- (id)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options
+- (id)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options error:(NSError **)error
 {
     if((self = [super init])) {
         _fileForWriting = fopen([path fileSystemRepresentation], "w");
         if(_fileForWriting) {
             [self _setupForWritingWithOptions:options];
         } else {
+            if(error) {
+                *error = YACYAMLErrorForFile(path, errno, YES);
+            }
             self = nil;
         }
     }
     return self;
+}
 
+- (id)initForWritingToFile:(NSString *)path error:(NSError **)error
+{
+    return [self initForWritingToFile:path options:YACYAMLKeyedArchiverOptionNone error:error];
+}
+
+- (id)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options
+{
+    return [self initForWritingToFile:path options:options error:NULL];
 }
 
 - (id)initForWritingToFile:(NSString *)path
@@ -188,38 +269,73 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     return 1;
 }
 
-- (void)finishEncoding 
+- (BOOL)_finishEncodingWithError:(NSError **)error
 {
+    BOOL success = YES;
+    
     yaml_emitter_t emitter;
     yaml_emitter_initialize(&emitter);
     
-    // Wonder should expose some of these options should be exposed?
-    yaml_emitter_set_encoding(&emitter, YAML_UTF8_ENCODING);
-    yaml_emitter_set_unicode(&emitter, 1);
-    yaml_emitter_set_width(&emitter, 72);
-    
-    if(_fileForWriting) {
-        yaml_emitter_set_output_file(&emitter, _fileForWriting); 
-    } else {
-        yaml_emitter_set_output(&emitter, EmitToNSMutableData, (__bridge void *)_dataForWriting);  
+    @try {
+        // Wonder should expose some of these options should be exposed?
+        yaml_emitter_set_encoding(&emitter, YAML_UTF8_ENCODING);
+        yaml_emitter_set_unicode(&emitter, 1);
+        yaml_emitter_set_width(&emitter, 72);
+        
+        if(_fileForWriting) {
+            yaml_emitter_set_output_file(&emitter, _fileForWriting); 
+        } else {
+            yaml_emitter_set_output(&emitter, EmitToNSMutableData, (__bridge void *)_dataForWriting);  
+        }
+        
+        yaml_event_t event;
+        
+        yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
+        yaml_emitter_emit(&emitter, &event);
+        
+        [_rootObject emitWithEmitter:&emitter];
+        
+        yaml_stream_end_event_initialize(&event);
+        yaml_emitter_emit(&emitter, &event);
+        
+        // Once an emitter has failed, it fails every later call too, so
+        // checking here catches anything that went wrong along the way.
+        if(emitter.error != YAML_NO_ERROR) {
+            if(error) {
+                *error = YACYAMLErrorForEmitter(&emitter);
+            }
+            success = NO;
+        }
+    } @finally {
+        yaml_emitter_delete(&emitter);
+        
+        if(_fileForWriting) {
+            fclose(_fileForWriting);
+            _fileForWriting = NULL;
+        }
     }
     
-    yaml_event_t event;
-    
-    yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
-    yaml_emitter_emit(&emitter, &event);
-    
-    [_rootObject emitWithEmitter:&emitter];
-    
-    yaml_stream_end_event_initialize(&event);
-    yaml_emitter_emit(&emitter, &event);
-    
-    yaml_emitter_delete(&emitter);
-    
-    
-    if(_fileForWriting) {
-        fclose(_fileForWriting);
-        _fileForWriting = NULL;
+    return success;
+}
+
+- (void)finishEncoding 
+{
+    [self _finishEncodingWithError:NULL];
+}
+
+- (BOOL)finishEncodingWithError:(NSError **)error
+{
+    @try {
+        return [self _finishEncodingWithError:error];
+    } @catch(NSException *exception) {
+        NSError *failure = YACYAMLErrorForException(exception, YES);
+        if(!failure) {
+            @throw;
+        }
+        if(error) {
+            *error = failure;
+        }
+        return NO;
     }
 }
 

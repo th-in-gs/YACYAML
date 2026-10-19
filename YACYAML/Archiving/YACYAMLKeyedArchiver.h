@@ -8,7 +8,7 @@
 
 #import <Foundation/Foundation.h>
 
-typedef enum YACYAMLKeyedArchiverOptions {    
+typedef NS_OPTIONS(NSUInteger, YACYAMLKeyedArchiverOptions) {
     YACYAMLKeyedArchiverOptionNone                      = 0x00,
     
     /*
@@ -55,25 +55,59 @@ typedef enum YACYAMLKeyedArchiverOptions {
     // This is the archiving counterpart to
     // YACYAMLKeyedUnarchiverOptionDisallowLocalTags.
     YACYAMLKeyedArchiverOptionDisallowLocalTags         = 0x08,
-} YACYAMLKeyedArchiverOptions;
+};
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface YACYAMLKeyedArchiver : NSCoder
 
-+ (NSData *)archivedDataWithRootObject:(id)rootObject;
-+ (NSData *)archivedDataWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
++ (NSData *)archivedDataWithRootObject:(id)rootObject NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
++ (NSData *)archivedDataWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
 
-+ (NSString *)archivedStringWithRootObject:(id)rootObject;
-+ (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options;
++ (NSString *)archivedStringWithRootObject:(id)rootObject NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
++ (NSString *)archivedStringWithRootObject:(id)rootObject options:(YACYAMLKeyedArchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
 
-+ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path;
++ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
++ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
 
-- (id)initForWritingWithMutableData:(NSMutableData *)data;
-- (id)initForWritingWithMutableData:(NSMutableData *)data options:(YACYAMLKeyedArchiverOptions)options;
+// These are like the above, but report what went wrong.  The errors are in
+// NSCocoaErrorDomain, with the codes that NSKeyedArchiver and NSKeyedUnarchiver use
+// (see YACYAMLConstants.h).  They return nil or NO, and fill in *error, if archiving
+// failed.
+// (Unlike the above, objects that can't be encoded cause an error to be returned,
+// not an exception to be raised.)
++ (nullable NSData *)archivedDataWithRootObject:(id)rootObject error:(NSError **)error;
++ (nullable NSString *)archivedStringWithRootObject:(id)rootObject error:(NSError **)error;
++ (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path error:(NSError **)error;
 
-- (id)initForWritingToFile:(NSString *)path;
-- (id)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options;
++ (nullable NSData *)archivedDataWithRootObject:(id)rootObject
+                                        options:(YACYAMLKeyedArchiverOptions)options
+                                          error:(NSError **)error;
 
-- (void)finishEncoding;
++ (nullable NSString *)archivedStringWithRootObject:(id)rootObject
+                                            options:(YACYAMLKeyedArchiverOptions)options
+                                              error:(NSError **)error;
+
++ (BOOL)archiveRootObject:(id)rootObject
+                   toFile:(NSString *)path
+                  options:(YACYAMLKeyedArchiverOptions)options
+                    error:(NSError **)error;
+
+- (instancetype)initForWritingWithMutableData:(nullable NSMutableData *)data;
+- (instancetype)initForWritingWithMutableData:(nullable NSMutableData *)data options:(YACYAMLKeyedArchiverOptions)options;
+
+- (nullable instancetype)initForWritingToFile:(NSString *)path NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+- (nullable instancetype)initForWritingToFile:(NSString *)path error:(NSError **)error;
+- (nullable instancetype)initForWritingToFile:(NSString *)path options:(YACYAMLKeyedArchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+- (nullable instancetype)initForWritingToFile:(NSString *)path
+                                      options:(YACYAMLKeyedArchiverOptions)options
+                                        error:(NSError **)error;
+
+- (void)finishEncoding NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+
+// Like -finishEncoding, but returns NO and fills in *error if the output could
+// not be written.
+- (BOOL)finishEncodingWithError:(NSError **)error;
 
 @end
 
@@ -89,7 +123,8 @@ typedef enum YACYAMLKeyedArchiverOptions {
 // For example, NSArray will return "tag:yaml.org,2002:seq", NSNumber will
 // return "tag:yaml.org,2002:int", "tag:yaml.org,2002:float" etc. as 
 // appropriate.
-@property (nonatomic, weak, readonly) NSString *YACYAMLArchivingTag;
+// nil for objects that are encoded as plain, untagged, YAML scalars (e.g. NSString).
+@property (nonatomic, weak, readonly, nullable) NSString *YACYAMLArchivingTag;
 
 // YES if the tag be skipped in non-quoted style output for this object.
 @property (nonatomic, assign, readonly) BOOL YACYAMLArchivingTagCanBePlainImplicit;
@@ -113,6 +148,8 @@ typedef enum YACYAMLKeyedArchiverOptions {
 // Will be called in place of encodeWithCoder:, if it's implemented.
 // For example, an NSNumber category overrides this to convert numbers to 
 // YAML-spec-compliant string representations.
-- (NSString *)YACYAMLScalarString; 
+- (nullable NSString *)YACYAMLScalarString; 
 
 @end
+
+NS_ASSUME_NONNULL_END

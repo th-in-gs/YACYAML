@@ -22,6 +22,16 @@
     return [YACYAMLKeyedArchiver archivedDataWithRootObject:self];
 }
 
+- (NSString *)YACYAMLEncodedStringWithError:(NSError **)error
+{
+    return [YACYAMLKeyedArchiver archivedStringWithRootObject:self options:YACYAMLKeyedArchiverOptionNone error:error];
+}
+
+- (NSData *)YACYAMLEncodedDataWithError:(NSError **)error
+{
+    return [YACYAMLKeyedArchiver archivedDataWithRootObject:self options:YACYAMLKeyedArchiverOptionNone error:error];
+}
+
 @end
 
             
@@ -42,6 +52,21 @@
     return [YACYAMLKeyedUnarchiver unarchiveObjectWithString:self];
 }
 
+- (id)YACYAMLDecodeWithError:(NSError **)error
+{
+    return [self YACYAMLDecodeBasicWithError:error];
+}
+
+- (id)YACYAMLDecodeBasicWithError:(NSError **)error
+{
+    return [YACYAMLKeyedUnarchiver unarchiveObjectWithString:self options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder error:error];
+}
+
+- (id)YACYAMLDecodeAllWithError:(NSError **)error
+{
+    return [YACYAMLKeyedUnarchiver unarchiveObjectWithString:self options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
 @end
 
             
@@ -60,6 +85,21 @@
 - (id)YACYAMLDecodeAll
 {
     return [YACYAMLKeyedUnarchiver unarchiveObjectWithData:self];
+}
+
+- (id)YACYAMLDecodeWithError:(NSError **)error
+{
+    return [self YACYAMLDecodeBasicWithError:error];
+}
+
+- (id)YACYAMLDecodeBasicWithError:(NSError **)error
+{
+    return [YACYAMLKeyedUnarchiver unarchiveObjectWithData:self options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder error:error];
+}
+
+- (id)YACYAMLDecodeAllWithError:(NSError **)error
+{
+    return [YACYAMLKeyedUnarchiver unarchiveObjectWithData:self options:YACYAMLKeyedUnarchiverOptionNone error:error];
 }
 
 @end

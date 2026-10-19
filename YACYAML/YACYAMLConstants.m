@@ -8,7 +8,11 @@
 
 #import "YACYAMLConstants.h"
 
-NSString * const YACYAMLUnsupportedTypeException = @"YACYAMLUnsupportedTypeException";
-NSString * const YACYAMLUnsupportedMethodException = @"YACYAMLUnsupportedMethodException";
-NSString * const YACYAMLUnsupportedObjectException = @"YACYAMLUnsupportedObjectException";
-NSString * const YACYAMLAnchorReplacementException = @"YACYAMLAnchorReplacementException";
+NSExceptionName const YACYAMLUnsupportedTypeException = @"YACYAMLUnsupportedTypeException";
+NSExceptionName const YACYAMLUnsupportedMethodException = @"YACYAMLUnsupportedMethodException";
+NSExceptionName const YACYAMLUnsupportedObjectException = @"YACYAMLUnsupportedObjectException";
+NSExceptionName const YACYAMLAnchorReplacementException = @"YACYAMLAnchorReplacementException";
+
+NSString * const YACYAMLErrorDomain = @"YACYAMLErrorDomain";
+NSString * const YACYAMLErrorLineKey = @"YACYAMLErrorLineKey";
+NSString * const YACYAMLErrorColumnKey = @"YACYAMLErrorColumnKey";

@@ -10,6 +10,7 @@
 #import "YACYAMLKeyedUnarchiver_Package.h"
 
 #import "YACYAMLConstants.h"
+#import "YACYAML_Package.h"
 
 #import "YACYAMLUnarchivingObject.h"
 #import "YACYAMLUnarchivingExtensions.h"
@@ -110,10 +111,62 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return [self unarchiveObjectWithFile:path options:YACYAMLKeyedUnarchiverOptionNone];
 }
 
++ (id)unarchiveObjectWithString:(NSString *)string error:(NSError **)error
+{
+    return [self unarchiveObjectWithString:string options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
++ (id)unarchiveObjectWithData:(NSData *)data error:(NSError **)error
+{
+    return [self unarchiveObjectWithData:data options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
++ (id)unarchiveObjectWithFile:(NSString *)path error:(NSError **)error
+{
+    return [self unarchiveObjectWithFile:path options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
++ (id)unarchivedObjectOfClass:(Class)cls fromData:(NSData *)data error:(NSError **)error
+{
+    return [self unarchivedObjectOfClass:cls fromData:data options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
++ (id)unarchivedObjectOfClass:(Class)cls fromData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error
+{
+    id object = [self unarchiveObjectWithData:data options:options error:error];
+    if(object && ![object isKindOfClass:cls]) {
+        if(error) {
+            *error = YACYAMLErrorForUnexpectedClass(cls, object);
+        }
+        return nil;
+    }
+    return object;
+}
+
++ (id)unarchiveObjectWithString:(NSString *)string options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error
+{
+    return [self unarchiveObjectWithData:[string dataUsingEncoding:NSUTF8StringEncoding] options:options error:error];
+}
+
++ (id)unarchiveObjectWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error
+{
+    return [[[self alloc] initForReadingWithData:data options:options error:error] _decodeRootObjectWithError:error];
+}
+
++ (id)unarchiveObjectWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error
+{
+    return [[[self alloc] initForReadingWithFile:path options:options error:error] _decodeRootObjectWithError:error];
+}
+
 
 #pragma mark - Initialization/destruction
 
+// If convertExceptions is YES, errors that occur while reading (the whole document is read
+// here, so that's where e.g. a failing initWithCoder: is called) are returned in *error: parse
+// errors, and our own exceptions (which are otherwise raised).
 - (BOOL)_setupForReadingWithOptions:(YACYAMLKeyedUnarchiverOptions)options
+                              error:(NSError **)error
+                   convertExceptions:(BOOL)convertExceptions
 {
     BOOL success = YES;
     
@@ -136,6 +189,9 @@ NSMutableArray *sImplicitScalarClasses = nil;
                 }
                 yaml_event_delete(&event);
             } else {
+                if(error) {
+                    *error = YACYAMLErrorForParser(&_parser);
+                }
                 success = NO;
                 keepParsing = NO;
             }
@@ -143,18 +199,37 @@ NSMutableArray *sImplicitScalarClasses = nil;
     }
     
     if(success) {
-        YACYAMLUnarchivingObject *obj = [[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
-                                                                           forUnarchiver:self];
-        if (obj) {
-            // This object will represent the entire document.
-            [_unarchivingObjectStack addObject:obj];
+        @try {
+            YACYAMLUnarchivingObject *obj = [[YACYAMLUnarchivingObject alloc] initWithParser:&_parser
+                                                                               forUnarchiver:self];
+            if (obj) {
+                // This object will represent the entire document.
+                [_unarchivingObjectStack addObject:obj];
+            }
+            if(convertExceptions && _parser.error != YAML_NO_ERROR) {
+                // The document has been read, but it ended in an error.  (The older
+                // methods return whatever was read before that.)
+                if(error) {
+                    *error = YACYAMLErrorForParser(&_parser);
+                }
+                success = NO;
+            }
+        } @catch(NSException *exception) {
+            NSError *failure = convertExceptions ? YACYAMLErrorForException(exception, NO) : nil;
+            if(!failure) {
+                @throw;
+            }
+            if(error) {
+                *error = failure;
+            }
+            success = NO;
         }
     }
     
     return success;
 }
 
-- (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options
+- (id)_initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error convertExceptions:(BOOL)convertExceptions
 {
     if((self = [super init])) {
         _archivedData = data;
@@ -171,12 +246,27 @@ NSMutableArray *sImplicitScalarClasses = nil;
         
         yaml_parser_set_input_string(&_parser, bytes, size);
         
-        if(![self _setupForReadingWithOptions:options]) {
+        if(![self _setupForReadingWithOptions:options error:error convertExceptions:convertExceptions]) {
             self = nil;
         }
     }
     
     return self;
+}
+
+- (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error
+{
+    return [self _initForReadingWithData:data options:options error:error convertExceptions:YES];
+}
+
+- (id)initForReadingFromData:(NSData *)data error:(NSError **)error
+{
+    return [self initForReadingWithData:data options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
+- (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options
+{
+    return [self _initForReadingWithData:data options:options error:NULL convertExceptions:NO];
 }
 
 - (id)initForReadingWithData:(NSData *)data
@@ -185,7 +275,7 @@ NSMutableArray *sImplicitScalarClasses = nil;
 }
 
 
-- (id)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options
+- (id)_initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error convertExceptions:(BOOL)convertExceptions
 {
     if((self = [super init])) {
         _archivedFile = fopen([path fileSystemRepresentation], "r");
@@ -194,15 +284,33 @@ NSMutableArray *sImplicitScalarClasses = nil;
             yaml_parser_initialize(&_parser);
             yaml_parser_set_input_file(&_parser, _archivedFile);
             
-            if(![self _setupForReadingWithOptions:options]) {
+            if(![self _setupForReadingWithOptions:options error:error convertExceptions:convertExceptions]) {
                 self = nil;
             }
         } else {
+            if(error) {
+                *error = YACYAMLErrorForFile(path, errno, NO);
+            }
             self = nil;
         }
     }
     
     return self;
+}
+
+- (id)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options error:(NSError **)error
+{
+    return [self _initForReadingWithFile:path options:options error:error convertExceptions:YES];
+}
+
+- (id)initForReadingWithFile:(NSString *)path error:(NSError **)error
+{
+    return [self initForReadingWithFile:path options:YACYAMLKeyedUnarchiverOptionNone error:error];
+}
+
+- (id)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options
+{
+    return [self _initForReadingWithFile:path options:options error:NULL convertExceptions:NO];
 }
 
 - (id)initForReadingWithFile:(NSString *)path
@@ -297,7 +405,6 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return _unarchivingObjectStack.count;
 }
 
-
 #pragma mark - Keyed unarchiving
 
 - (BOOL)allowsKeyedCoding
@@ -360,12 +467,44 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return data.bytes;
 }
 
-
 #pragma mark - Old-school non-keyed unarchiving
 
 - (id)decodeObject
 {
     return [[_unarchivingObjectStack lastObject] nextUnkeyedObject];
+}
+
+// For the methods that return errors: decodes the root object, turning anything that went 
+// wrong into an error.  (If initialization failed, it will have set the error already, and 
+// this will be called on nil, so will do nothing.)
+- (id)_decodeRootObjectWithError:(NSError **)error
+{
+    id object = nil;
+    NSError *failure = nil;
+    @try {
+        object = [self decodeObject];
+    } @catch(NSException *exception) {
+        failure = YACYAMLErrorForException(exception, NO);
+        if(!failure) {
+            @throw;
+        }
+    }
+    
+    if(!failure && _parser.error != YAML_NO_ERROR) {
+        // Parse errors part-way through leave us with whatever was read before them.
+        failure = YACYAMLErrorForParser(&_parser);
+    }
+    if(!failure && !object) {
+        failure = YACYAMLErrorForMissingDocument();
+    }
+    
+    if(failure) {
+        if(error) {
+            *error = failure;
+        }
+        return nil;
+    }
+    return object;
 }
 
 - (void)decodeValueOfObjCType:(const char *)type 
@@ -452,5 +591,5 @@ NSMutableArray *sImplicitScalarClasses = nil;
 {
     return [self decodeObject];
 }
-                         
+
 @end

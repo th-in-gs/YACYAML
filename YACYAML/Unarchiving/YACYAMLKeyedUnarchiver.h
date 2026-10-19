@@ -8,7 +8,7 @@
 
 #import <Foundation/Foundation.h>
 
-typedef enum YACYAMLKeyedUnarchiverOptions {    
+typedef NS_OPTIONS(NSUInteger, YACYAMLKeyedUnarchiverOptions) {
     YACYAMLKeyedUnarchiverOptionNone                    = 0x00,
     
     // Usually, the first (perhaps implicit) document in the YAML file is read
@@ -40,28 +40,76 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
     // This is the unarchiving counterpart to
     // YACYAMLKeyedArchiverOptionDisallowLocalTags.
     YACYAMLKeyedUnarchiverOptionDisallowLocalTags       = 0x04,
-} YACYAMLKeyedUnarchiverOptions;
+};
 
+NS_ASSUME_NONNULL_BEGIN
 
 @interface YACYAMLKeyedUnarchiver : NSCoder
 
 // See comments in YACYAMLKeyedUnarchiverOptions.
 @property (nonatomic, readonly, getter = isInitWithCoderDisallowed) BOOL initWithCoderDisallowed;
 
-+ (id)unarchiveObjectWithString:(NSString *)string;
-+ (id)unarchiveObjectWithString:(NSString *)data options:(YACYAMLKeyedUnarchiverOptions)options;
+// These return nil if the YAML could not be read.
++ (nullable id)unarchiveObjectWithString:(NSString *)string NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
++ (nullable id)unarchiveObjectWithString:(NSString *)data options:(YACYAMLKeyedUnarchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
 
-+ (id)unarchiveObjectWithData:(NSData *)data;
-+ (id)unarchiveObjectWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options;
++ (nullable id)unarchiveObjectWithData:(NSData *)data NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
++ (nullable id)unarchiveObjectWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
 
-+ (id)unarchiveObjectWithFile:(NSString *)path;
-+ (id)unarchiveObjectWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options;
++ (nullable id)unarchiveObjectWithFile:(NSString *)path NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
++ (nullable id)unarchiveObjectWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
 
-- (id)initForReadingWithData:(NSData *)data;
-- (id)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options;
+// These are like the above, but report what went wrong.  The errors are in
+// NSCocoaErrorDomain, with the codes that NSKeyedArchiver and NSKeyedUnarchiver use
+// (see YACYAMLConstants.h).  They return nil, and fill in *error, if the YAML could 
+// not be read, even if only part of it was bad.
+// (Unlike the above, objects that can't be decoded cause an error to be returned,
+// not an exception to be raised.  Exceptions raised by initWithCoder: methods
+// are not caught.)
++ (nullable id)unarchiveObjectWithString:(NSString *)string error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(from:));
++ (nullable id)unarchiveObjectWithData:(NSData *)data error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(from:));
++ (nullable id)unarchiveObjectWithFile:(NSString *)path error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(fromFile:));
 
-- (id)initForReadingWithFile:(NSString *)path;
-- (id)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options;
++ (nullable id)unarchiveObjectWithString:(NSString *)string
+                                 options:(YACYAMLKeyedUnarchiverOptions)options
+                                   error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(from:options:));
+
++ (nullable id)unarchiveObjectWithData:(NSData *)data
+                               options:(YACYAMLKeyedUnarchiverOptions)options
+                                 error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(from:options:));
+
++ (nullable id)unarchiveObjectWithFile:(NSString *)path
+                               options:(YACYAMLKeyedUnarchiverOptions)options
+                                 error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(fromFile:options:));
+
+- (nullable instancetype)initForReadingWithData:(NSData *)data NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+- (nullable instancetype)initForReadingWithData:(NSData *)data options:(YACYAMLKeyedUnarchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+// (This is the name NSKeyedUnarchiver gives it.)
+- (nullable instancetype)initForReadingFromData:(NSData *)data error:(NSError **)error;
+- (nullable instancetype)initForReadingWithData:(NSData *)data
+                                        options:(YACYAMLKeyedUnarchiverOptions)options
+                                          error:(NSError **)error;
+
+- (nullable instancetype)initForReadingWithFile:(NSString *)path NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+- (nullable instancetype)initForReadingWithFile:(NSString *)path error:(NSError **)error;
+- (nullable instancetype)initForReadingWithFile:(NSString *)path options:(YACYAMLKeyedUnarchiverOptions)options NS_SWIFT_UNAVAILABLE("Use the variant that takes an error, which Swift imports as throwing.");
+- (nullable instancetype)initForReadingWithFile:(NSString *)path
+                                        options:(YACYAMLKeyedUnarchiverOptions)options
+                                          error:(NSError **)error;
+
+
+// Like NSKeyedUnarchiver's, these check that the decoded object is of a class (or a subclass of
+// it), returning nil, and an error, if it isn't.  Unlike NSKeyedUnarchiver's, this does not limit
+// what is instantiated, and so is not a safeguard against untrusted YAML: the check is made after the
+// YAML has been decoded.  (See YACYAMLKeyedUnarchiverOptionDisallowLocalTags.)
++ (nullable id)unarchivedObjectOfClass:(Class)cls
+                              fromData:(NSData *)data
+                                 error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(ofClass:from:));
+
++ (nullable id)unarchivedObjectOfClass:(Class)cls
+                              fromData:(NSData *)data
+                               options:(YACYAMLKeyedUnarchiverOptions)options
+                                 error:(NSError **)error NS_SWIFT_NAME(unarchivedObject(ofClass:from:options:));
 
 
 // Use this to register classes that should be handled specially by the 
@@ -87,7 +135,7 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 // Then, for any YAML entity that has the @"tag:yaml.org,2002:seq" tag, 
 // an NSMutableArray is instantiated, and its elements are set with the 
 // YACYAMLUnarchivingSetObject... instance method, below.
-+ (NSArray *)YACYAMLUnarchivingTags;
++ (NSArray<NSString *> *)YACYAMLUnarchivingTags;
 
 // Should construct and return an object that YACYAMLUnarchivingAddObject: can 
 // be called on to add elements.
@@ -101,7 +149,7 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 // Similar to the above, but for classes represented by YAML mappings.
 @protocol YACYAMLUnarchivingMapping
 
-+ (NSArray *)YACYAMLUnarchivingTags;
++ (NSArray<NSString *> *)YACYAMLUnarchivingTags;
 
 
 // Should construct and return an object that YACYAMLUnarchivingSetObject:forKey:
@@ -127,7 +175,7 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 // Then, for any YAML entity that has the @"tag:yaml.org,2002:binary" tag, 
 // an NSMutableArray is instantiated, and its elements are set with the 
 // init methods defined below.
-+ (NSArray *)YACYAMLUnarchivingTags;
++ (NSArray<NSString *> *)YACYAMLUnarchivingTags;
 
 @optional
 
@@ -142,7 +190,10 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
 
 // Used to construct objects matching the YAML tag or scalars with strings
 // matching the NSPredicate, above.
-+ (id)objectWithYACYAMLScalarString:(NSString *)string;
-+ (id)objectWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length;
++ (nullable id)objectWithYACYAMLScalarString:(NSString *)string;
++ (nullable id)objectWithYACYAMLScalarUTF8String:(const char *)UTF8String length:(NSUInteger)length;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
