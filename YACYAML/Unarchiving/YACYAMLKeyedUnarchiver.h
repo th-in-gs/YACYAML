@@ -26,6 +26,20 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
     // your own initWithCoder: methods safe isn't enough: a tag can name any
     // class in the process, including system and third-party ones.)
     YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder   = 0x02,
+    
+    // Ignore local tags (the YAML spec's name for tags that start with a single
+    // '!', like !ClassName), so that they never cause a class to be
+    // instantiated: whatever has one is read as if it had no tag, so mappings
+    // and sequences become NSDictionarys and NSArrays, and scalars become
+    // strings.  Global tags (like tag:yaml.org,2002:int, or one in your own
+    // domain) are still honoured.
+    // This is stricter than YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder
+    // in that it applies to classes that you have registered with a local tag
+    // too, but it does not stop -initWithCoder: being called for a class that
+    // you have registered with a global tag.  Use the two options together for both.
+    // This is the unarchiving counterpart to
+    // YACYAMLKeyedArchiverOptionDisallowLocalTags.
+    YACYAMLKeyedUnarchiverOptionDisallowLocalTags       = 0x04,
 } YACYAMLKeyedUnarchiverOptions;
 
 

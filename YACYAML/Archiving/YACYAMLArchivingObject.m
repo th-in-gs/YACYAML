@@ -79,6 +79,12 @@
         archivingObject.needsAnchor = YES;
         archivingObject.reuseCount += 1;
     } else {
+        if(_archiver.localTagsDisallowed && [[obj YACYAMLArchivingTag] hasPrefix:@"!"]) {
+            // Raised here, in the first pass, so that nothing has been output.
+            [NSException raise:YACYAMLUnsupportedObjectException
+                        format:@"Attempt made to encode an object of class %@, which has the local tag %@, with YACYAMLKeyedArchiverOptionDisallowLocalTags set", [obj class], [obj YACYAMLArchivingTag]];
+        }
+        
         archivingObject = [[YACYAMLArchivingObject alloc] initWithRepresentedObject:obj
                                                                         forArchiver:_archiver];
         

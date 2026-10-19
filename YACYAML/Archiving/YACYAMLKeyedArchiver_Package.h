@@ -13,6 +13,7 @@
 @interface YACYAMLKeyedArchiver ()
 
 @property (nonatomic, readonly) BOOL scalarAnchorsAllowed;
+@property (nonatomic, readonly) BOOL localTagsDisallowed;
 
 - (void)pushArchivingObject:(YACYAMLArchivingObject *)archivingObject;
 - (void)popArchivingObject;

@@ -39,6 +39,7 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
     FILE *_fileForWriting;
     
     BOOL _scalarAnchorsAllowed;
+    BOOL _localTagsDisallowed;
     
     YACYAMLArchivingObject *_rootObject;
     NSMutableArray *_archivingObjectStack;
@@ -50,6 +51,7 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
 }
 
 @synthesize scalarAnchorsAllowed = _scalarAnchorsAllowed;
+@synthesize localTagsDisallowed = _localTagsDisallowed;
 
 
 #pragma mark - Convenince methods
@@ -137,6 +139,8 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
     _nonAnchoringObjects = [[NSMutableArray alloc] init];
     
     _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionAllowScalarAnchors) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
+    
+    _localTagsDisallowed = ((options & YACYAMLKeyedArchiverOptionDisallowLocalTags) == YACYAMLKeyedArchiverOptionDisallowLocalTags);
 }
 
 - (id)initForWritingWithMutableData:(NSMutableData *)mdata options:(YACYAMLKeyedArchiverOptions)options

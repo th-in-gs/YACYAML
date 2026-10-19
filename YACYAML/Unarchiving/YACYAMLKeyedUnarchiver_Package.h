@@ -19,6 +19,8 @@ struct yaml_parser_s;
 - (void)popUnarchivingObject;
 - (NSUInteger)unarchivingObjectStackDepth;
 
+@property (nonatomic, readonly) BOOL localTagsDisallowed;
+
 + (Class)classForYAMLTag:(NSString *)tag;
 + (Class)classForYAMLScalarString:(NSString *)scalarString;
 

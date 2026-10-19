@@ -44,6 +44,10 @@ With the option on, tagged mappings and sequences come back as plain `NSDictiona
 
 The `-YACYAMLDecode` and `-YACYAMLDecodeBasic` methods on `NSString` and `NSData` already set this option.  `-YACYAMLDecodeAll` doesn't, and decodes the same way as `YACYAMLKeyedUnarchiver` does by default.
 
+If you'd rather not let any local tag (YAML's name for a tag that starts with a single `!`, like `!ClassName`) have an effect, use `YACYAMLKeyedUnarchiverOptionDisallowLocalTags`.  Local tags are then ignored, and what has one is read as if it had none: mappings and sequences become `NSDictionary`s and `NSArray`s, and scalars become strings.  Global tags, like `!!int` (which is `tag:yaml.org,2002:int`), still work.  This is stricter than `DisallowInitWithCoder` for classes that you've registered with a local tag, which it also ignores, but it doesn't stop `-initWithCoder:` being called for a class that you've registered with a global tag.  The two options can be used together.
+
+`YACYAMLKeyedArchiverOptionDisallowLocalTags` is the same idea for writing: archiving an object that would be written with a local tag (any object that is encoded with `-encodeWithCoder:` is, as it's tagged with its class name) raises an exception, before anything is written, so that application objects can't get into the output by accident.
+
 This limits which objects get created.  It isn't a sandbox - it doesn't, for example, limit the size of the input.
 
 

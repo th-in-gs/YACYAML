@@ -143,6 +143,41 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
 
 @end
 
+// Objects that provide their own YAML encoding, with a global tag and with a local one.
+@interface YACYAMLGlobalTagObject : NSObject
+@end
+
+@implementation YACYAMLGlobalTagObject
+
+- (NSString *)YACYAMLArchivingTag
+{
+    return @"tag:example.com,2026:global";
+}
+
+- (void)YACYAMLEncodeWithCoder:(YACYAMLKeyedArchiver *)coder
+{
+    [coder encodeObject:@"global" forKey:@"how"];
+}
+
+@end
+
+@interface YACYAMLLocalTagObject : NSObject
+@end
+
+@implementation YACYAMLLocalTagObject
+
+- (NSString *)YACYAMLArchivingTag
+{
+    return @"!local";
+}
+
+- (void)YACYAMLEncodeWithCoder:(YACYAMLKeyedArchiver *)coder
+{
+    [coder encodeObject:@"local" forKey:@"how"];
+}
+
+@end
+
 // A CALayer subclass that replaces itself in -initWithCoder: (the pattern that
 // -initWithCoder: implementations of some Cocoa classes follow), and that can refer
 // to another layer, so that layers can form cycles.
@@ -1934,6 +1969,111 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     XCTAssertTrue([parent isKindOfClass:[YACYAMLNormalObject class]], @"Unexpected parent: %@", parent);
     id child = parent.child;
     XCTAssertEqualObjects(parent, child, @"Cycle should resolve to same object");
+}
+
+- (void)testArchiverDisallowLocalTagsOption
+{
+    // The option stops anything with a local tag (one that starts with a single '!', like
+    // the !ClassName that application objects are written with) being archived, so that it
+    // can't get into the output by accident.  YAML's own types, which have global tags,
+    // are still written.
+    
+    YACYAMLNormalObject *normal = [[YACYAMLNormalObject alloc] init];
+    normal.child = @"hello";
+    
+    // By default, the object is written, tagged with its class.
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[ normal ]];
+    XCTAssertTrue([archived rangeOfString:@"!YACYAMLNormalObject"].location != NSNotFound, @"Got %@", archived);
+    
+    // With the option, it raises, wherever the object is: at the top, in a collection, as a
+    // dictionary value, or as a dictionary key (an NSURL, for this one, as keys have to be
+    // copyable).  Classes that give themselves a local tag are refused too.
+    YACYAMLKeyedArchiverOptions options = YACYAMLKeyedArchiverOptionDisallowLocalTags;
+    NSArray *unencodable = @[ normal,
+                              @[ normal ],
+                              @{ @"key": normal },
+                              @{ [NSURL URLWithString:@"http://example.com/"]: @"value" },
+                              [[YACYAMLLocalTagObject alloc] init] ];
+    for(id object in unencodable) {
+        XCTAssertThrowsSpecificNamed([YACYAMLKeyedArchiver archivedStringWithRootObject:object options:options],
+                                     NSException,
+                                     YACYAMLUnsupportedObjectException,
+                                     @"Should not have been able to archive %@", object);
+    }
+    
+    // Nothing has been written to the data when it fails: the exception comes before
+    // anything is output.
+    NSMutableData *data = [NSMutableData data];
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:data options:options];
+    NSArray *partlyEncodable = @[ @"fine", normal ];
+    XCTAssertThrowsSpecificNamed([archiver encodeRootObject:partlyEncodable],
+                                 NSException,
+                                 YACYAMLUnsupportedObjectException);
+    XCTAssertEqual(data.length, (NSUInteger)0);
+    
+    // YAML's own types are written exactly as they are without the option, including
+    // the ones that are not scalars, and null.
+    NSArray *native = @[ @"string", @1, @2.5, @YES, [NSNull null],
+                         [NSDate dateWithTimeIntervalSinceReferenceDate:0],
+                         [NSData dataWithBytes:"abc" length:3],
+                         @[ @"nested", @{ @"a": @"b" } ],
+                         [NSSet setWithObject:@"member"] ];
+    NSString *withoutOption = [YACYAMLKeyedArchiver archivedStringWithRootObject:native];
+    NSString *withOption = [YACYAMLKeyedArchiver archivedStringWithRootObject:native options:options];
+    XCTAssertEqualObjects(withOption, withoutOption);
+    
+    // Classes that give themselves a global tag are allowed too.
+    YACYAMLGlobalTagObject *global = [[YACYAMLGlobalTagObject alloc] init];
+    withOption = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[ global ] options:options];
+    XCTAssertTrue([withOption rangeOfString:@"tag:example.com,2026:global"].location != NSNotFound, @"Got %@", withOption);
+    
+    // The option combines with the others.
+    withOption = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[ @"repeated string for anchoring", @"repeated string for anchoring", @"repeated string for anchoring" ]
+                                                            options:options | YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    XCTAssertTrue([withOption rangeOfString:@"&"].location != NSNotFound, @"Got %@", withOption);
+}
+
+- (void)testUnarchiverDisallowLocalTagsOption
+{
+    // The option makes the unarchiver ignore local tags (the ones that start with a single
+    // '!'), so they never cause a class to be instantiated: what has one is read as if it
+    // had no tag.  Global tags, like !!int, which is tag:yaml.org,2002:int, are still honoured.
+    // YACYAMLCapturingReplacingObject records the unarchiver when its initWithCoder: runs,
+    // so gCapturedUnarchiver being nil afterwards shows that it was never called.
+    
+    NSString *yaml =
+        @"- !YACYAMLCapturingReplacingObject\n"
+        @"  child: hello\n"
+        @"- !YACYAMLNormalObject [one, two]\n"
+        @"- !NotAClass 12\n"
+        @"- !!int \"5\"\n"
+        @"- !!str 6\n";
+    
+    // By default, tags name classes, which are instantiated with initWithCoder:.
+    gCapturedUnarchiver = nil;
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+    XCTAssertEqual(unarchived.count, (NSUInteger)5);
+    XCTAssertNotNil(gCapturedUnarchiver, @"initWithCoder: should be called by default");
+    XCTAssertTrue([unarchived[1] isKindOfClass:[YACYAMLNormalObject class]], @"Got %@", unarchived[1]);
+    gCapturedUnarchiver = nil;
+    
+    // With the option, the local tags are ignored (a scalar with an ignored tag is left as a
+    // string, not resolved as a number), and the global ones are used.
+    NSArray *expected = @[ @{ @"child": @"hello" }, @[ @"one", @"two" ], @"12", @5, @"6" ];
+    unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml options:YACYAMLKeyedUnarchiverOptionDisallowLocalTags];
+    XCTAssertEqualObjects(unarchived, expected);
+    XCTAssertNil(gCapturedUnarchiver, @"initWithCoder: must not be called with the option set");
+    
+    // The same through the NSData entry point, and combined with the other option.
+    unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:[yaml dataUsingEncoding:NSUTF8StringEncoding]
+                                                         options:YACYAMLKeyedUnarchiverOptionDisallowLocalTags | YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder];
+    XCTAssertEqualObjects(unarchived, expected);
+    XCTAssertNil(gCapturedUnarchiver);
+    
+    // Output from the archiver with the same option is read back by an unarchiver with it.
+    NSArray *native = @[ @"string", @1, @{ @"a": @[ @2.5, [NSNull null] ] } ];
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:native options:YACYAMLKeyedArchiverOptionDisallowLocalTags];
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived options:YACYAMLKeyedUnarchiverOptionDisallowLocalTags], native);
 }
 
 @end

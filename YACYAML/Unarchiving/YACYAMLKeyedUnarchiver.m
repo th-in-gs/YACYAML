@@ -33,9 +33,11 @@ NSMutableArray *sImplicitScalarClasses = nil;
     NSMutableArray *_unarchivingObjectStack;
     
     BOOL _initWithCoderDisallowed;
+    BOOL _localTagsDisallowed;
 }
 
 @synthesize initWithCoderDisallowed = _initWithCoderDisallowed;
+@synthesize localTagsDisallowed = _localTagsDisallowed;
 
 
 #pragma mark - Global setup
@@ -116,6 +118,7 @@ NSMutableArray *sImplicitScalarClasses = nil;
     BOOL success = YES;
     
     _initWithCoderDisallowed = (options & YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder) == YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder;
+    _localTagsDisallowed = (options & YACYAMLKeyedUnarchiverOptionDisallowLocalTags) == YACYAMLKeyedUnarchiverOptionDisallowLocalTags;
     
     _anchoredObjects = [[NSMutableDictionary alloc] init];
     

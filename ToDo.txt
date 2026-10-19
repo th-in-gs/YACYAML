@@ -19,6 +19,29 @@ mapping key), so it shouldn't make the output longer by more than a character
 or two.  It does make the output harder for a person to read and edit, which is
 why it's not the default.
 
+Consider YACYAML...OptionDisallowExplicitTags options on the archiver and
+unarchiver, a step up from the DisallowLocalTags ones, for plain, human-readable
+YAML with no explicit tags in it (every node's type comes from implicit
+resolution).  It would imply DisallowLocalTags.
+
+Archiving would raise (in pass 1, like DisallowLocalTags) for any object that
+would be written with an explicit tag: one whose YACYAMLArchivingTag is non-nil
+and whose YACYAMLArchivingTagCanBePlainImplicit is NO.  That is NSData
+(!!binary), NSSet (!!set), classes written as !ClassName, and custom classes
+that don't declare their tag implicit.  Strings, numbers, dates, null, arrays
+and dictionaries are written as they are.  Dates are written as plain
+timestamps, which YAML 1.2 Core parsers read as strings.
+
+Unarchiving would ignore every tag, global ones too (the hook is the
+unarchiver's _shouldIgnoreTag:), so no tag can cause a class to be instantiated,
+registered classes included.  A scalar with an ignored tag is left as a string:
+!!binary data comes back as a string, !!int "5" as "5", !!set as a dictionary
+(and an explicit !!merge << wouldn't merge).  Decide whether it should ignore
+them or raise.
+
+DisallowLocalTags is still needed alongside it, for publishing or reading data
+that includes NSData, NSSet or !!timestamp but no application classes.
+
 Match and parse scalars (especially dates) using a 'proper' parser rather than
 regexes (advantage of regexes is that it's easy to verify that they match
 the specs exactly).

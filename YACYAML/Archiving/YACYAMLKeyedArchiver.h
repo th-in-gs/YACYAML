@@ -42,6 +42,19 @@ typedef enum YACYAMLKeyedArchiverOptions {
     // It might be a good idea to switch this on if you're not intending
     // your archive to be human-readable.
     YACYAMLKeyedArchiverOptionAllowScalarAnchors        = 0x04,
+    
+    // You would set this if you want to be sure that no local tags (the
+    // YAML spec's name for tags that start with a single '!', like !ClassName)
+    // are written, so that application classes, which are written with their
+    // class name as a local tag, can't get into the output by accident.
+    // YAML's own types, and classes that return a global tag (like
+    // tag:yaml.org,2002:str, or one in your own domain) from their
+    // YACYAMLArchivingTag, are still written.  Archiving an object that has a
+    // local tag raises a YACYAMLUnsupportedObjectException, before anything is
+    // output.
+    // This is the archiving counterpart to
+    // YACYAMLKeyedUnarchiverOptionDisallowLocalTags.
+    YACYAMLKeyedArchiverOptionDisallowLocalTags         = 0x08,
 } YACYAMLKeyedArchiverOptions;
 
 @interface YACYAMLKeyedArchiver : NSCoder

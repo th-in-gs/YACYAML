@@ -106,12 +106,19 @@
     return self;
 }
 
+// Local tags (the ones that start with a single '!') are ignored, as if the node had no tag,
+// if the unarchiver has been asked to.
+- (BOOL)_shouldIgnoreTag:(const yaml_char_t *)tag
+{
+    return _unarchiver.localTagsDisallowed && tag[0] == '!';
+}
+
 - (void)_parseScalarEvent:(yaml_event_t *)event
 {
     
     Class representedClass = nil;
     
-    if(event->data.scalar.tag) {
+    if(event->data.scalar.tag && ![self _shouldIgnoreTag:event->data.scalar.tag]) {
         NSString *tagString = [NSString stringWithUTF8String:(const char *)event->data.scalar.tag];
         representedClass = [[_unarchiver class] classForYAMLTag:tagString];
         if(representedClass) {
@@ -163,7 +170,7 @@
     
     
     Class representedClass = nil;
-    if(tag) {
+    if(tag && ![self _shouldIgnoreTag:tag]) {
         NSString *tagString = [NSString stringWithUTF8String:(const char *)tag];
         representedClass = [[_unarchiver class] classForYAMLTag:tagString];
     }
