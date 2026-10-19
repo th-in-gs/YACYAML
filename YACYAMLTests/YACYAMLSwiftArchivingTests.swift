@@ -404,4 +404,41 @@ final class YACYAMLSwiftArchivingTests: YACYAMLSwiftTestCase {
         decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
         XCTAssertTrue(decoded.children?.first?.conditionalLink === decoded, "Not the parent:\n\(archived)")
     }
+
+    func testEmptyCollections() throws {
+        // An empty dictionary used to be written as an empty sequence ([]), and read back as an NSArray.
+        // An empty set has the same problem.
+        let dictionary: [String: Any] = [:]
+        let set = Set<String>()
+        let array: [Any] = []
+
+        var archived: String = try YACYAMLKeyedArchiver.archivedString(withRootObject: dictionary)
+        XCTAssertTrue(archived.hasPrefix("{}"), "Got \(archived)")
+        var decoded = try YACYAMLKeyedUnarchiver.unarchivedObject(from: archived)
+        XCTAssertEqual((decoded as? NSDictionary)?.count, 0, "Got \(type(of: decoded)) from \(archived)")
+
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: set)
+        decoded = try YACYAMLKeyedUnarchiver.unarchivedObject(from: archived)
+        XCTAssertEqual((decoded as? NSSet)?.count, 0, "Got \(type(of: decoded)) from \(archived)")
+
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: array)
+        XCTAssertTrue(archived.hasPrefix("[]"), "Got \(archived)")
+        decoded = try YACYAMLKeyedUnarchiver.unarchivedObject(from: archived)
+        XCTAssertEqual((decoded as? NSArray)?.count, 0, "Got \(type(of: decoded)) from \(archived)")
+
+        // And inside other collections, as values and as elements.
+        let nested: [String: Any] = ["dictionary": dictionary, "set": set, "array": array, "list": [dictionary, set, array] as [Any]]
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: nested)
+        let decodedNested = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? [String: Any])
+        assertEqualObjects(decodedNested, nested, "Did not round trip:\n\(archived)")
+        XCTAssertTrue(decodedNested["dictionary"] is NSDictionary)
+        XCTAssertTrue(decodedNested["set"] is NSSet)
+        XCTAssertTrue(decodedNested["array"] is NSArray)
+        let list = try XCTUnwrap(decodedNested["list"] as? [Any])
+        XCTAssertTrue(list[0] is NSDictionary && list[1] is NSSet && list[2] is NSArray, "Got \(list)")
+
+        // An object that isn't a collection, with nothing to encode, is still an empty sequence.
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: NormalObject())
+        XCTAssertTrue(archived.contains("[]"), "Got \(archived)")
+    }
 }
