@@ -799,6 +799,63 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     }
 }
 
+- (void)testScalarAnchorsOption
+{
+    // By default, scalars that are repeated are written out in full each time, for human
+    // readability.  With YACYAMLKeyedArchiverOptionAllowScalarAnchors, they're written once, with
+    // an anchor, and referred to by alias after that.
+    NSString *repeated = @"a fairly long string that is repeated";
+    NSArray *strings = @[ repeated, repeated, repeated, @"a different string" ];
+    
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:strings];
+    XCTAssertFalse([archived containsString:@"&"], @"No anchors expected by default: %@", archived);
+    XCTAssertFalse([archived containsString:@"*"], @"No aliases expected by default: %@", archived);
+    
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:strings options:YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    XCTAssertTrue([archived containsString:@"&"], @"Expected an anchor: %@", archived);
+    XCTAssertEqual([[archived componentsSeparatedByString:repeated] count], (NSUInteger)2, @"The string should be written once: %@", archived);
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived], strings, @"Unarchived objects not equal to archived objects");
+    
+    // Scalars used as dictionary keys are anchored and referred to too.
+    NSArray *dictionaries = @[ @{ @"a key that is used more than once": @1 }, @{ @"a key that is used more than once": @2 } ];
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:dictionaries options:YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    XCTAssertEqual([[archived componentsSeparatedByString:@"a key that is used more than once"] count], (NSUInteger)2, @"The key should be written once: %@", archived);
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived], dictionaries);
+}
+
+- (void)testScalarAnchorsKeepTypes
+{
+    // NSNumbers of different kinds compare as equal with isEqual: (@1, @1.0 and @YES all do), but are
+    // written differently, and are different when read back.  Using an anchor for one must not make
+    // another of them the same type.
+    NSArray *numbers = @[ @1, @1.0, @YES, @1, @1.0, @YES, @0, @0.0, @NO ];
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:numbers options:YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    
+    XCTAssertEqual(unarchived.count, numbers.count, @"%@", archived);
+    for(NSUInteger i = 0; i < MIN(unarchived.count, numbers.count); ++i) {
+        NSNumber *original = numbers[i];
+        NSNumber *value = unarchived[i];
+        XCTAssertEqualObjects(value, original, @"Wrong value at %lu in %@", (unsigned long)i, archived);
+        // The kind of number: a boolean, an integer (which is always read back as a long long, whatever
+        // size it started as) or a floating point number.
+        BOOL originalIsBoolean = CFGetTypeID((__bridge CFTypeRef)original) == CFBooleanGetTypeID();
+        BOOL valueIsBoolean = CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID();
+        XCTAssertEqual(valueIsBoolean, originalIsBoolean, @"Wrong boolean-ness at %lu in %@", (unsigned long)i, archived);
+        if(!originalIsBoolean) {
+            BOOL originalIsFloat = strchr("df", original.objCType[0]) != NULL;
+            BOOL valueIsFloat = strchr("df", value.objCType[0]) != NULL;
+            XCTAssertEqual(valueIsFloat, originalIsFloat, @"Wrong kind of number at %lu in %@", (unsigned long)i, archived);
+        }
+    }
+    
+    // Equal numbers of the same kind are still shared.
+    NSArray *same = @[ @1000000, @1000000, @1000000 ];
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:same options:YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    XCTAssertTrue([archived containsString:@"*"], @"Expected an alias: %@", archived);
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived], same);
+}
+
 - (void)testPositiveIntegerParsing
 {
     NSString *integersYAML = 

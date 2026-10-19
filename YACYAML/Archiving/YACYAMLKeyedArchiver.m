@@ -15,6 +15,25 @@
 
 #import <libYAML/yaml.h>
 
+// Equality for the table of archived objects.  NSNumbers of different kinds are equal to
+// each other as far as isEqual: is concerned ([@1 isEqual:@1.0] and [@1 isEqual:@YES] are
+// both YES), but they're written differently, and are read back as different things.  An
+// anchor for one must not be used as the other, so they're also required to be written
+// as the same kind of thing (an integer, a float or a boolean).
+static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value2)
+{
+    id object1 = (__bridge id)value1;
+    id object2 = (__bridge id)value2;
+    
+    if(![object1 isEqual:object2]) {
+        return false;
+    }
+    if([object1 isKindOfClass:[NSNumber class]]) {
+        return [[object1 YACYAMLArchivingTag] isEqual:[object2 YACYAMLArchivingTag]];
+    }
+    return true;
+}
+
 @implementation YACYAMLKeyedArchiver {
     NSMutableData *_dataForWriting;
     FILE *_fileForWriting;
@@ -107,7 +126,7 @@
                                                           NULL,
                                                           kCFTypeDictionaryKeyCallBacks.copyDescription,
                                                           (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
-                                                            NULL : kCFTypeDictionaryKeyCallBacks.equal,
+                                                            NULL : YACYAMLArchivedObjectsEqual,
                                                           (options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionDontUseObjectEquality ?
                                                             NULL : kCFTypeDictionaryKeyCallBacks.hash,
                                                       },
@@ -117,7 +136,7 @@
     // since they won't be retained in the _archivedObjectToItem dictionary.
     _nonAnchoringObjects = [[NSMutableArray alloc] init];
     
-    _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionDontUseObjectEquality) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
+    _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionAllowScalarAnchors) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
 }
 
 - (id)initForWritingWithMutableData:(NSMutableData *)mdata options:(YACYAMLKeyedArchiverOptions)options
