@@ -35,6 +35,24 @@ YAML 1.2.2 update
   1.2.  Run the yaml-test-suite to see how far from 1.2.2.
 
 
+Swift
+-----
+
+- Swift overlay (Swift source in the library) for what NSKeyedArchiver has in
+  Swift: generic, typed unarchivedObject(ofClass:from:) -> T? (it returns Any
+  for now), and Codable support (encodeEncodable, decodeDecodable,
+  decodeTopLevelDecodable).  Reuse the archiver and unarchiver: no rewrite, and
+  no Encoder that writes libyaml events directly.
+  - First: bridge through PropertyListEncoder and PropertyListDecoder.  Loses
+    declaration order (it goes through dictionaries).  An explicit encodeNil
+    comes out as the string "$null": map it to NSNull and back.  (A nil
+    optional is never encoded, by any encoder: Swift skips it.)
+  - Then: our own Encoder and Decoder that build and read the Foundation
+    object tree for the existing archiver.  Native nil, declaration order (an
+    ordered mapping class that writes its keys in order), key conversion,
+    userInfo, errors with coding paths.
+
+
 ReadMe
 ------
 
@@ -68,15 +86,6 @@ DisallowLocalTags are our safeguards.)
   replacementObjectForKeyedArchiver:, classForKeyedUnarchiver.
 
 
-Swift
------
-
-- Swift overlay (Swift source in the library) for what NSKeyedArchiver has in
-  Swift: generic, typed unarchivedObject(ofClass:from:) -> T? (it returns Any
-  for now), and Codable support (encodeEncodable, decodeDecodable,
-  decodeTopLevelDecodable), perhaps with a YAMLEncoder and YAMLDecoder.
-
-
 Tests
 -----
 
@@ -100,6 +109,12 @@ Options and ideas
   - Unarchiving: ignore every tag (hook: _shouldIgnoreTag:), so none can cause
     a class to be instantiated.  !!binary comes back as a string, !!int "5" as
     "5", !!set as a dictionary, and !!merge << doesn't merge.  Ignore or raise?
+
+- Presentation options on the archiver (libyaml supports all of them): multi-line
+  strings as literal (|) or folded (>) blocks, not single-quoted with a blank
+  line per newline; flow style for short collections ([1, 2, 3]); width
+  (hard-coded 72), indent, unicode or escapes, canonical; sorted mapping keys
+  (see the commented-out OrderMappingContentsByKey).
 
 - Parse scalars (especially dates) with a proper parser, not regexes.  (Regexes
   are easy to check against the specs.)
