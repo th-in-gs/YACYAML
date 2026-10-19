@@ -74,6 +74,14 @@ static NSRegularExpression *YACYAMLFloatRegularExpression(void)
     // http://yaml.org/type/float.html
     // [-+]?([0-9][0-9_]*)?\.[0-9.]*([eE][-+][0-9]+)? (base 10)
     // |[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+\.[0-9_]* (base 60)
+    //
+    // This is the expression from the YAML 1.1 spec, unchanged.  It has known
+    // quirks: it accepts '.' and repeated dots (so '1.2.3' is read as 1.2), and
+    // it disallows the '_' in a fraction that the spec's own example,
+    // '685.230_15e+03', contains.  PyYAML corrected the first of these in
+    // https://github.com/yaml/pyyaml/pull/497.  The YAML 1.2 float expression
+    // doesn't have these problems, so they are left for when YACYAML moves to
+    // YAML 1.2.2.
     
     static NSRegularExpression *expression;
     
@@ -85,6 +93,33 @@ static NSRegularExpression *YACYAMLFloatRegularExpression(void)
     });
     
     return expression;
+}
+
+// Does value = value * multiplier + addend.  Returns YES if that overflowed.
+static BOOL YACYAMLMultiplyAndAdd(long long *value, long long multiplier, long long addend)
+{
+    return __builtin_mul_overflow(*value, multiplier, value) || __builtin_add_overflow(*value, addend, value);
+}
+
+// Converts an integer (with any '_' already removed).  It's signed if that fits, or unsigned
+// if it's positive and that fits.  Returns nil if it fits in neither.
+static NSNumber *YACYAMLIntegerNumber(const char *canonical, int base)
+{
+    errno = 0;
+    long long signedInteger = strtoll_l(canonical, NULL, base, _c_locale);
+    if(errno != ERANGE) {
+        return [NSNumber numberWithLongLong:signedInteger];
+    }
+    
+    if(signedInteger == LLONG_MAX) {
+        errno = 0;
+        unsigned long long unsignedInteger = strtoull_l(canonical, NULL, base, _c_locale);
+        if(errno != ERANGE) {
+            return [NSNumber numberWithUnsignedLongLong:unsignedInteger];
+        }
+    }
+    
+    return nil;
 }
 
 static NSSet *YACYAMLInfinitySet(void)
@@ -152,7 +187,7 @@ static NSSet *YACYAMLBoolFalseSet(void)
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         set = [NSSet setWithObjects:@"n", @"N", @"no", @"No", @"NO",
-                                    @"false", @"false", @"FALSE",
+                                    @"false", @"False", @"FALSE",
                                     @"off", @"Off", @"OFF",
                                     nil];
     });
@@ -201,59 +236,53 @@ static NSSet *YACYAMLBoolFalseSet(void)
                     ++cursor;
                 }
                 
+                BOOL outOfRange = NO;
                 long long last60part = 0;
                 while(*cursor && *cursor != '.') {
                     if(*cursor != '_') {
                         if(*cursor == ':') {
-                            last60part *= 60;
-                            last60part += signedInteger;
+                            outOfRange |= YACYAMLMultiplyAndAdd(&last60part, 60, signedInteger);
                             signedInteger = 0;
                         } else {
-                            signedInteger *= 10;
-                            signedInteger += *cursor - '0';
+                            outOfRange |= YACYAMLMultiplyAndAdd(&signedInteger, 10, *cursor - '0');
                         }
                     }
                     ++cursor;
                 }
                 
-                last60part *= 60;
-                signedInteger += last60part;
+                outOfRange |= YACYAMLMultiplyAndAdd(&last60part, 60, signedInteger);
                 
-                if(negative) {
-                    signedInteger = -signedInteger;
+                if(!outOfRange) {
+                    numberObject = [NSNumber numberWithLongLong:negative ? -last60part : last60part];
                 }
-                
-                numberObject = [NSNumber numberWithLongLong:signedInteger];
             } else {
-                BOOL isBinary = NO;
+                // A '0b' at the start (after any sign) marks a binary number.  (Note that
+                // 'b' is also a hexadecimal digit.)
+                const char *digits = cursor + (*cursor == '-' || *cursor == '+');
+                BOOL isBinary = (digits[0] == '0' && digits[1] == 'b');
                 
-                // Strip out '_' characters, which YAML allows for spacing.
+                // Strip out '_' characters, which YAML allows for spacing, and the 'b' of a
+                // binary number (we pass the base in, instead).
                 char *canonicalString = calloc(strlen(cursor) + 1, 1);
                 char *canonicalCursor = canonicalString;
                 while(*cursor) {
-                    if(*cursor != '_') {
-                        if(*cursor == 'b') {
-                            isBinary = YES;
-                        } else {
-                            *canonicalCursor++ = *cursor;
-                        }
+                    if(*cursor != '_' && !(isBinary && cursor == digits + 1)) {
+                        *canonicalCursor++ = *cursor;
                     }
                     ++cursor;
-                } 
-                
-                // Explicitly pass the base in if we know it's binary,
-                // otherwise let strtoll_l parse the base.
-                long long signedInteger = strtoll_l(canonicalString, NULL, isBinary ? 2 : 0, _c_locale);
-                if(signedInteger == LLONG_MAX && errno == ERANGE) {
-                    // A positive value larger than LLONG_MAX (can't fit in a signed long long).
-                    // We'll try decoding it into an unsigned long long.
-                    unsigned long long unsignedInteger = strtoull_l(canonicalString, NULL, isBinary ? 2 : 0, _c_locale);
-                    numberObject = [NSNumber numberWithUnsignedLongLong:unsignedInteger];
-                } else {
-                    numberObject = [NSNumber numberWithLongLong:signedInteger];
                 }
                 
+                numberObject = YACYAMLIntegerNumber(canonicalString, isBinary ? 2 : 0);
                 free(canonicalString);
+            }
+            
+            if(!numberObject) {
+                // Out of range.  Don't silently clamp or wrap: leave it as a string, so
+                // that no information is lost.  (YAML integers can be any size, and
+                // NSDecimalNumber could hold more of them, exactly.  That, and the same
+                // for base 60 numbers, is left for when YACYAML moves to YAML 1.2.2.)
+                NSLog(@"Warning: Integer \"%@\" does not fit in 64 bits, using string as-is", string);
+                return string;
             }
         }
         

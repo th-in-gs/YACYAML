@@ -894,6 +894,184 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     XCTAssertTrue(isnan([[unarchivedDictionary objectForKey:@"not a number"] doubleValue]), @"Unarchived object not equal to archived object");
 }
 
+- (void)testBooleanParsing
+{
+    // The YAML 1.1 boolean forms, in each of the three cases that YAML allows.
+    NSArray *trueForms = @[ @"true", @"True", @"TRUE", @"yes", @"Yes", @"YES", @"y", @"Y", @"on", @"On", @"ON" ];
+    NSArray *falseForms = @[ @"false", @"False", @"FALSE", @"no", @"No", @"NO", @"n", @"N", @"off", @"Off", @"OFF" ];
+    
+    for(NSString *form in trueForms) {
+        id value = [self unarchivedScalar:form];
+        XCTAssertTrue(value != nil && CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID(), @"%@ should be a boolean, got %@", form, value);
+        XCTAssertEqualObjects(value, @YES, @"%@ should be true", form);
+    }
+    for(NSString *form in falseForms) {
+        id value = [self unarchivedScalar:form];
+        XCTAssertTrue(value != nil && CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID(), @"%@ should be a boolean, got %@", form, value);
+        XCTAssertEqualObjects(value, @NO, @"%@ should be false", form);
+    }
+    
+    // Other capitalisations, and near misses, are strings.
+    for(NSString *form in @[ @"tRue", @"TRUe", @"fAlse", @"FALSe", @"yEs", @"nO", @"oN", @"oFF", @"truee", @"fals", @"ye", @"t", @"f", @"o", @"yes please" ]) {
+        XCTAssertEqualObjects([self unarchivedScalar:form], form, @"%@ should be a string", form);
+    }
+    
+    // Quoting, or an explicit string tag, makes them strings.
+    XCTAssertEqualObjects([self unarchivedScalar:@"\"False\""], @"False");
+    XCTAssertEqualObjects([self unarchivedScalar:@"'yes'"], @"yes");
+    XCTAssertEqualObjects([self unarchivedScalar:@"!!str true"], @"true");
+}
+
+- (void)testBooleanLookingStringsRoundTrip
+{
+    // Strings that would be read back as booleans must be archived in a way that keeps them strings.
+    // This is what keeps 'False' a string for other YAML parsers too, not just for this one.
+    NSArray *strings = @[ @"true", @"True", @"TRUE", @"false", @"False", @"FALSE", @"yes", @"No", @"y", @"N", @"on", @"Off",
+                          @"tRue", @"fAlse", @"yes please" ];
+    
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:strings]];
+    XCTAssertEqualObjects(unarchived, strings);
+    
+    for(NSString *string in @[ @"True", @"False", @"FALSE" ]) {
+        NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[string]];
+        XCTAssertTrue([archived hasPrefix:@"- '"], @"%@ should be quoted when archived, got: %@", string, archived);
+    }
+    
+    // And real booleans are archived as booleans.
+    NSArray *booleans = @[ @YES, @NO ];
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:booleans]], booleans);
+}
+
+- (void)testFloatParsingForms
+{
+    // Each form is checked against its own expected value.  Each must be decoded as a float.
+    NSArray *cases = @[
+        @[ @"1.5",                  @1.5 ],
+        @[ @"-1.5",                 @-1.5 ],
+        @[ @"+1.5",                 @1.5 ],
+        @[ @"1.",                   @1 ],
+        @[ @"5.",                   @5 ],
+        @[ @".5",                   @0.5 ],
+        @[ @"+.5",                  @0.5 ],
+        @[ @"-.5",                  @-0.5 ],
+        @[ @"0.0",                  @0 ],
+        @[ @"6.8523015e+5",         @685230.15 ],
+        @[ @"685_230.15",           @685230.15 ],
+        @[ @"1.5E-3",               @0.0015 ],
+        @[ @"1.e+3",                @1000 ],
+        @[ @"190:20:30.15",         @685230.15 ],
+        @[ @"-190:20:30.15",        @-685230.15 ],
+    ];
+    
+    for(NSArray *testCase in cases) {
+        id value = [self unarchivedScalar:testCase[0]];
+        XCTAssertTrue([value isKindOfClass:[NSNumber class]], @"%@ should be a number, got %@", testCase[0], value);
+        XCTAssertEqualWithAccuracy([value doubleValue], [testCase[1] doubleValue], 0.0000005, @"Wrong value for %@", testCase[0]);
+        XCTAssertEqual(strcmp([value objCType], "d"), 0, @"%@ should be a double, got type %s", testCase[0], [value objCType]);
+    }
+}
+
+- (void)testMalformedFloatsAreStrings
+{
+    // These look a little like floats, but aren't.
+    for(NSString *string in @[ @"1.5e", @"1.5e+", @"e+3", @"1,5", @"1.5f" ]) {
+        id value = [self unarchivedScalar:string];
+        XCTAssertEqualObjects(value, string, @"%@ should be a string, got %@", string, value);
+    }
+    
+    // Strings that look like floats are archived in a way that keeps them strings, including ones
+    // (like version numbers) that the YAML 1.1 float expression accepts but that aren't floats.
+    NSArray *strings = @[ @".", @"1.2.3", @"10.0.0.1", @"1..2" ];
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:strings]], strings);
+}
+
+- (void)testHexadecimalAndBinaryIntegerParsing
+{
+    // 'b' is both the marker in a binary number (0b101) and a hexadecimal digit, which must not
+    // confuse the two: hexadecimal numbers with a 'b' in them used to be decoded as 0.
+    NSArray *cases = @[
+        @[ @"0x1b",            @27 ],
+        @[ @"0xb",             @11 ],
+        @[ @"0xab",            @171 ],
+        @[ @"0xAB",            @171 ],
+        @[ @"0xbeef",          @48879 ],
+        @[ @"-0xbeef",         @-48879 ],
+        @[ @"+0xbeef",         @48879 ],
+        @[ @"0xdeadbeef",      @3735928559LL ],
+        @[ @"0x_0A_74_AE",     @685230 ],
+        @[ @"0x_bb_bb",        @48059 ],
+        @[ @"0b101",           @5 ],
+        @[ @"-0b101",          @-5 ],
+        @[ @"+0b101",          @5 ],
+        @[ @"0b_1_0",          @2 ],
+        @[ @"0b1010_0111",     @167 ],
+        @[ @"0",               @0 ],
+        @[ @"0777",            @511 ],
+    ];
+    
+    for(NSArray *testCase in cases) {
+        id value = [self unarchivedScalar:testCase[0]];
+        XCTAssertTrue([value isKindOfClass:[NSNumber class]], @"%@ should be a number, got %@", testCase[0], value);
+        XCTAssertEqual([value longLongValue], [testCase[1] longLongValue], @"Wrong value for %@", testCase[0]);
+    }
+}
+
+- (void)testIntegerRangeParsing
+{
+    // Integers that fit in 64 bits (signed, or unsigned for large positive values) are numbers,
+    // exactly.  Those that don't must not be silently clamped or wrapped.
+    
+    // Signed values.
+    NSArray *signedCases = @[
+        @[ @"9223372036854775807",    @9223372036854775807LL ],
+        @[ @"-9223372036854775808",   @(LLONG_MIN) ],
+        @[ @"-0x8000000000000000",    @(LLONG_MIN) ],
+        @[ @"0x7FFFFFFFFFFFFFFF",     @9223372036854775807LL ],
+        @[ @"-1",                     @-1 ],
+    ];
+    for(NSArray *testCase in signedCases) {
+        id value = [self unarchivedScalar:testCase[0]];
+        XCTAssertTrue([value isKindOfClass:[NSNumber class]], @"%@ should be a number, got %@", testCase[0], value);
+        XCTAssertEqual([value longLongValue], [testCase[1] longLongValue], @"Wrong value for %@", testCase[0]);
+    }
+    
+    // Positive values that need an unsigned 64 bit number.
+    NSArray *unsignedCases = @[
+        @"9223372036854775808",
+        @"18446744073709551615",
+        @"0xFFFFFFFFFFFFFFFF",
+        @"0b1111111111111111111111111111111111111111111111111111111111111111",
+        @"01777777777777777777777",
+    ];
+    for(NSString *string in unsignedCases) {
+        id value = [self unarchivedScalar:string];
+        XCTAssertTrue([value isKindOfClass:[NSNumber class]], @"%@ should be a number, got %@", string, value);
+        XCTAssertEqual([value unsignedLongLongValue], string.length == 19 ? 9223372036854775808ULL : ULLONG_MAX, @"Wrong value for %@", string);
+        XCTAssertGreaterThan([value doubleValue], 0, @"%@ should be positive", string);
+    }
+    
+    // Too big for either.  These must not be clamped or wrapped: they are left as strings, so
+    // that no information is lost.
+    NSArray *tooBig = @[ @"18446744073709551616",
+                         @"99999999999999999999999999",
+                         @"-9223372036854775809",
+                         @"-99999999999999999999999999",
+                         @"123456789012345678901234567890123456789",
+                         @"1234567890123456789012345678901234567890123456789012345678901234567890",
+                         @"0x10000000000000000",
+                         @"-0x8000000000000001",
+                         @"0b10000000000000000000000000000000000000000000000000000000000000000",
+                         @"02000000000000000000000",
+                         @"99999999999999999999:30" ];
+    for(NSString *string in tooBig) {
+        id value = [self unarchivedScalar:string];
+        XCTAssertEqualObjects(value, string, @"%@ doesn't fit in 64 bits, so should be left as a string, got %@", string, value);
+    }
+    
+    // And those strings survive being archived and unarchived.
+    XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:tooBig]], tooBig);
+}
+
 - (void)testBinaryParsing
 {
     NSString *binaryYAML =

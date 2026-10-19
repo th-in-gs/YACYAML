@@ -17,3 +17,37 @@ than referring to the string directly.  Make this the default mode for scalars.
 Match and parse scalars (especially dates) using a 'proper' parser rather than
 regexes (advantage of regexes is that it's easy to verify that they match
 the specs exactly).
+
+
+YAML 1.2.2 update:
+
+Decide whether to move to the 1.2 Core schema (spec section 10.3.2), or to add
+it as an option.  Scalars are currently resolved using the YAML 1.1 rules
+(http://yaml.org/type/): y/n/yes/no/on/off booleans, base 60 numbers, 0b
+binary, leading-zero octal and '_' in numbers.  Core has none of those; it
+adds 0o octal, and exponents with an optional sign and no decimal point (1e3).
+
+The float expression is the one from the YAML 1.1 spec, unchanged.  It accepts
+'.' and repeated dots (so '1.2.3' decodes as 1.2), and it rejects '_' in the
+fraction, although the spec's own example (685.230_15e+03) has one.  The 1.2
+expression doesn't have these problems.  (PyYAML fixed part of this in
+https://github.com/yaml/pyyaml/pull/497.)  testPositiveFloatParsing and
+testNegativePositiveFloatParsing are missing the newlines between their lines,
+so they don't test floats at all.  Fix them along with the expression.
+
+Integers that don't fit in 64 bits (including base 60 ones) are left as
+strings, with a warning.  They could be NSDecimalNumbers (a subclass of
+NSNumber) when that holds the value exactly (about 39 digits).
+
+Archiving: strings that a YAML 1.2 parser reads as something else, but that
+this decoder reads as strings (1e3, 1.5e3, 0o17, 08), are written unquoted.
+Quote anything that either schema would resolve to a different type.  Also,
+NSDate is written as a plain timestamp (a YAML 1.1 type, which Core reads as a
+string), and a double with a whole value (1.0) is written as 1.
+
+A scalar with an explicit tag that its content doesn't match (!!bool maybe,
+!!float 1) silently becomes a string or an integer.
+
+libYAML is a YAML 1.1 parser (NEL, LS and PS are line breaks, for example)
+that accepts %YAML 1.2 directives.  Run the yaml-test-suite against it to see
+how far it is from 1.2.2.
