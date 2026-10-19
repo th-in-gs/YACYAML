@@ -44,6 +44,15 @@
 		7DE66F37156E9ADB0016E676 /* YACYAMLUnarchivingObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DE66F35156E9ADB0016E676 /* YACYAMLUnarchivingObject.h */; };
 		7DE66F38156E9ADB0016E676 /* YACYAMLUnarchivingObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DE66F36156E9ADB0016E676 /* YACYAMLUnarchivingObject.m */; };
 		7DECD68E156FB0F4009EE2AC /* YACYAML_Package.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DECD68D156FB0F4009EE2AC /* YACYAML_Package.m */; };
+		8E2B5D3EB8E9513A06E9651E /* YACYAMLSwiftTestSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FC62BFD7C7434C6DD9000FD /* YACYAMLSwiftTestSupport.m */; };
+		D5890CD6EE4838C1A5DD7B04 /* YACYAMLSwiftTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C39D469F1158D88C326FA6 /* YACYAMLSwiftTestSupport.swift */; };
+		1C120D25C63032ABAFF59332 /* YACYAMLSwiftArchivingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1114ADCB38A3BC6DB2A9A312 /* YACYAMLSwiftArchivingTests.swift */; };
+		A402B0369C36A3E88D4F8A3D /* YACYAMLSwiftViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF881350D9ADD94BD86DF4D /* YACYAMLSwiftViewTests.swift */; };
+		D830DBF75BD52DCEB5FBC735 /* YACYAMLSwiftAnchorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1BF43057343FE471254DEB /* YACYAMLSwiftAnchorTests.swift */; };
+		1CBE2B07BBD9C223EF239520 /* YACYAMLSwiftScalarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D156FBB56B57C245AD141A42 /* YACYAMLSwiftScalarTests.swift */; };
+		7E580A5B4AD17962F7EFA8CD /* YACYAMLSwiftDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6A40990749243A42ABDF1A0 /* YACYAMLSwiftDateTests.swift */; };
+		271D3F59709F5A40E9FEB2E3 /* YACYAMLSwiftMergeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702E5D55BEF8C48079691330 /* YACYAMLSwiftMergeTests.swift */; };
+		DACEEDAE113C4DB3915B4144 /* YACYAMLSwiftErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3FFD3513B4364EA249BB23 /* YACYAMLSwiftErrorTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -178,6 +187,17 @@
 		7DE66F39156EA0320016E676 /* YACYAMLKeyedUnarchiver_Package.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YACYAMLKeyedUnarchiver_Package.h; sourceTree = "<group>"; };
 		7DECD68B156FB0E2009EE2AC /* YACYAML_Package.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YACYAML_Package.h; sourceTree = "<group>"; };
 		7DECD68D156FB0F4009EE2AC /* YACYAML_Package.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YACYAML_Package.m; sourceTree = "<group>"; };
+		8061D96EB1B1DE6B1999A149 /* YACYAMLSwiftTests-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "YACYAMLSwiftTests-Bridging-Header.h"; sourceTree = "<group>"; };
+		13D8A7AE4559D871896EEEA3 /* YACYAMLSwiftTestSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "YACYAMLSwiftTestSupport.h"; sourceTree = "<group>"; };
+		9FC62BFD7C7434C6DD9000FD /* YACYAMLSwiftTestSupport.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "YACYAMLSwiftTestSupport.m"; sourceTree = "<group>"; };
+		30C39D469F1158D88C326FA6 /* YACYAMLSwiftTestSupport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftTestSupport.swift"; sourceTree = "<group>"; };
+		1114ADCB38A3BC6DB2A9A312 /* YACYAMLSwiftArchivingTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftArchivingTests.swift"; sourceTree = "<group>"; };
+		4DF881350D9ADD94BD86DF4D /* YACYAMLSwiftViewTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftViewTests.swift"; sourceTree = "<group>"; };
+		CF1BF43057343FE471254DEB /* YACYAMLSwiftAnchorTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftAnchorTests.swift"; sourceTree = "<group>"; };
+		D156FBB56B57C245AD141A42 /* YACYAMLSwiftScalarTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftScalarTests.swift"; sourceTree = "<group>"; };
+		C6A40990749243A42ABDF1A0 /* YACYAMLSwiftDateTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftDateTests.swift"; sourceTree = "<group>"; };
+		702E5D55BEF8C48079691330 /* YACYAMLSwiftMergeTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftMergeTests.swift"; sourceTree = "<group>"; };
+		CA3FFD3513B4364EA249BB23 /* YACYAMLSwiftErrorTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "YACYAMLSwiftErrorTests.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -294,6 +314,17 @@
 		7DDC0327156541F8001832F5 /* YACYAMLTests */ = {
 			isa = PBXGroup;
 			children = (
+				CA3FFD3513B4364EA249BB23 /* YACYAMLSwiftErrorTests.swift */,
+				702E5D55BEF8C48079691330 /* YACYAMLSwiftMergeTests.swift */,
+				C6A40990749243A42ABDF1A0 /* YACYAMLSwiftDateTests.swift */,
+				D156FBB56B57C245AD141A42 /* YACYAMLSwiftScalarTests.swift */,
+				CF1BF43057343FE471254DEB /* YACYAMLSwiftAnchorTests.swift */,
+				4DF881350D9ADD94BD86DF4D /* YACYAMLSwiftViewTests.swift */,
+				1114ADCB38A3BC6DB2A9A312 /* YACYAMLSwiftArchivingTests.swift */,
+				30C39D469F1158D88C326FA6 /* YACYAMLSwiftTestSupport.swift */,
+				9FC62BFD7C7434C6DD9000FD /* YACYAMLSwiftTestSupport.m */,
+				13D8A7AE4559D871896EEEA3 /* YACYAMLSwiftTestSupport.h */,
+				8061D96EB1B1DE6B1999A149 /* YACYAMLSwiftTests-Bridging-Header.h */,
 				7DDC032D156541F8001832F5 /* YACYAMLTests.h */,
 				7DDC032E156541F8001832F5 /* YACYAMLTests.m */,
 				7DDC0328156541F8001832F5 /* Supporting Files */,
@@ -594,6 +625,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DACEEDAE113C4DB3915B4144 /* YACYAMLSwiftErrorTests.swift in Sources */,
+				271D3F59709F5A40E9FEB2E3 /* YACYAMLSwiftMergeTests.swift in Sources */,
+				7E580A5B4AD17962F7EFA8CD /* YACYAMLSwiftDateTests.swift in Sources */,
+				1CBE2B07BBD9C223EF239520 /* YACYAMLSwiftScalarTests.swift in Sources */,
+				D830DBF75BD52DCEB5FBC735 /* YACYAMLSwiftAnchorTests.swift in Sources */,
+				A402B0369C36A3E88D4F8A3D /* YACYAMLSwiftViewTests.swift in Sources */,
+				1C120D25C63032ABAFF59332 /* YACYAMLSwiftArchivingTests.swift in Sources */,
+				D5890CD6EE4838C1A5DD7B04 /* YACYAMLSwiftTestSupport.swift in Sources */,
+				8E2B5D3EB8E9513A06E9651E /* YACYAMLSwiftTestSupport.m in Sources */,
 				7D4765A12A26BDBB00A3B969 /* YACYAMLTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -708,6 +748,9 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "YACYAMLTests/YACYAMLSwiftTests-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TVOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_TVOS_DEPLOYMENT_TARGET)";
 				WATCHOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_WATCHOS_DEPLOYMENT_TARGET)";
@@ -768,6 +811,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "YACYAMLTests/YACYAMLSwiftTests-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TVOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_TVOS_DEPLOYMENT_TARGET)";
 				WATCHOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_WATCHOS_DEPLOYMENT_TARGET)";
