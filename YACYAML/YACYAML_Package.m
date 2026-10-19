@@ -65,10 +65,38 @@ NSError *YACYAMLErrorForException(NSException *exception, BOOL writing)
     if(![names containsObject:exception.name]) {
         return nil;
     }
+    // If it was raised while decoding, it has the position.
+    NSMutableDictionary *position = [[NSMutableDictionary alloc] init];
+    for(NSString *key in @[ YACYAMLErrorLineKey, YACYAMLErrorColumnKey ]) {
+        if(exception.userInfo[key]) {
+            position[key] = exception.userInfo[key];
+        }
+    }
     return WrappedError(writing ? NSCoderInvalidValueError : NSCoderReadCorruptError,
                         YACYAMLErrorUnsupported,
                         exception.reason ?: exception.name,
-                        nil);
+                        position);
+}
+
+static NSString *DescriptionWithPosition(NSString *description, NSUInteger line, NSUInteger column)
+{
+    return line ? [NSString stringWithFormat:@"%@ (line %lu, column %lu)", description, (unsigned long)line, (unsigned long)column] : description;
+}
+
+void YACYAMLRaiseDecodingException(NSString *name, NSString *reason, NSUInteger line, NSUInteger column)
+{
+    NSDictionary *userInfo = line ? @{ YACYAMLErrorLineKey: @(line), YACYAMLErrorColumnKey: @(column) } : nil;
+    [[NSException exceptionWithName:name
+                             reason:DescriptionWithPosition(reason, line, column)
+                           userInfo:userInfo] raise];
+    abort(); // Not reached.  This tells the compiler that.
+}
+
+void YACYAMLRaiseUnsupportedMethod(id object, SEL selector, NSString *advice)
+{
+    [NSException raise:YACYAMLUnsupportedMethodException
+                format:@"%@ does not support -%@.  %@", [object class], NSStringFromSelector(selector), advice];
+    abort(); // Not reached.  This tells the compiler that.
 }
 
 NSError *YACYAMLErrorForParser(yaml_parser_t *parser)

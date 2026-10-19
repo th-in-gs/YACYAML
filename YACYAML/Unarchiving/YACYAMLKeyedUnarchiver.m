@@ -405,6 +405,14 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return _unarchivingObjectStack.count;
 }
 
+- (void)getLine:(NSUInteger *)line column:(NSUInteger *)column
+{
+    YACYAMLUnarchivingObject *current = [_unarchivingObjectStack lastObject];
+    *line = current.startLine;
+    *column = current.startColumn;
+}
+
+
 #pragma mark - Keyed unarchiving
 
 - (BOOL)allowsKeyedCoding
@@ -507,6 +515,13 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return object;
 }
 
+- (void)_raiseUnsupportedType:(NSString *)reason
+{
+    NSUInteger line, column;
+    [self getLine:&line column:&column];
+    YACYAMLRaiseDecodingException(YACYAMLUnsupportedTypeException, reason, line, column);
+}
+
 - (void)decodeValueOfObjCType:(const char *)type 
                            at:(void *)data
 {
@@ -540,7 +555,7 @@ NSMutableArray *sImplicitScalarClasses = nil;
                 } else if(!stringObject) {
                     *(const char **)data = NULL;
                 } else {
-                    [NSException raise:YACYAMLUnsupportedTypeException format:@"Tried to decode a C string from something that was not a string or data, %@", [stringObject class]];
+                    [self _raiseUnsupportedType:[NSString stringWithFormat:@"Tried to decode a C string from something that was not a string or data, %@", [stringObject class]]];
                 }
             }
             break;
@@ -583,7 +598,7 @@ NSMutableArray *sImplicitScalarClasses = nil;
             *(bool *)data = [object boolValue] ? true : false;
             break;
         default: 
-            [NSException raise:YACYAMLUnsupportedTypeException format:@"Tried to decode value of unhandled type"];
+            [self _raiseUnsupportedType:@"Tried to decode value of unhandled type"];
     }
 }
 
@@ -592,4 +607,40 @@ NSMutableArray *sImplicitScalarClasses = nil;
     return [self decodeObject];
 }
 
+
+#pragma mark - Methods of NSCoder that are not supported
+
+// These are historical, or don't fit with YAML.  Anything that has the same effect
+// as something that is supported raises, rather than being implemented a second way.
+
+- (void *)decodeBytesWithReturnedLength:(NSUInteger *)lengthp
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Use -decodeBytesForKey:returnedLength:, or decode an NSData with -decodeObject.");
+}
+
+- (void *)decodeBytesWithMinimumLength:(NSUInteger)length
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Use -decodeBytesForKey:minimumLength:, or decode an NSData with -decodeObject.");
+}
+
+- (void)decodeArrayOfObjCType:(const char *)itemType count:(NSUInteger)count at:(void *)array
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Decode an NSArray with -decodeObject, or decode the values one at a time.");
+}
+
+- (id)decodePropertyList
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Use -decodeObject or -decodeObjectForKey:.  To decode without creating arbitrary classes from local tags (!ClassName), create the unarchiver with YACYAMLKeyedUnarchiverOptionDisallowLocalTags.  Only standard YAML types are then instantiated.");
+}
+
+- (id)decodePropertyListForKey:(NSString *)key
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Use -decodeObject or -decodeObjectForKey:.  To decode without creating arbitrary classes from local tags (!ClassName), create the unarchiver with YACYAMLKeyedUnarchiverOptionDisallowLocalTags.  Only standard YAML types are then instantiated.");
+}
+
+- (NSInteger)versionForClassName:(NSString *)className
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Class versions are not written, and are not used with keyed coders.");
+}
+                         
 @end

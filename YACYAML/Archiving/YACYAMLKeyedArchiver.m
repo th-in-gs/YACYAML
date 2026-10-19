@@ -432,14 +432,6 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 	return YES;
 }
 
-- (unsigned)systemVersion
-{
-    [NSException raise:YACYAMLUnsupportedMethodException 
-                format:@"YACYAML archving does not support the systemVersion method"];
-    return 0;
-}
-
-
 #pragma mark - Keyed archiving
 
 - (void)_encodeObject:(id)obj forKey:(NSString *)key
@@ -466,6 +458,11 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 - (void)encodeConditionalObject:(id)objv forKey:(NSString *)key
 {
+    // This should only encode the object if it's encoded unconditionally somewhere else in the
+    // archive, but it always encodes it.  Classes use it for links that they don't own, like
+    // AppKit's views do for their superview, so archiving a view also writes its superview, and
+    // that view's other subviews.  It can't raise as unsupported, either: that would make
+    // NSView and NSButton fail to archive.  See ToDo.txt for how it could be done.
     [self encodeObject:objv forKey:key];
 }
 
@@ -582,6 +579,32 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 - (void)encodeDataObject:(NSData *)data
 {
     [self _encodeObject:data forKey:nil];
+}
+
+
+#pragma mark - Methods of NSCoder that are not supported
+
+// These are historical, or don't fit with YAML.  Anything that has the same effect
+// as something that is supported raises, rather than being implemented a second way.
+
+- (void)encodeBytes:(const void *)byteaddr length:(NSUInteger)length
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Use -encodeBytes:length:forKey:, or encode an NSData with -encodeObject:.");
+}
+
+- (void)encodeArrayOfObjCType:(const char *)type count:(NSUInteger)count at:(const void *)array
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Encode an NSArray with -encodeObject:, or encode the values one at a time.");
+}
+
+- (void)encodePropertyList:(id)aPropertyList
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Use -encodeObject: or -encodeObject:forKey:.  Strings, numbers, dates, data, arrays and dictionaries are written as standard YAML types.");
+}
+
+- (NSInteger)versionForClassName:(NSString *)className
+{
+    YACYAMLRaiseUnsupportedMethod(self, _cmd, @"Class versions are not written, and are not used with keyed coders.");
 }
 
 @end

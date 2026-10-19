@@ -21,6 +21,10 @@ struct yaml_event_s;
 @property (nonatomic, strong, readonly) id representedObject;
 @property (nonatomic) BOOL anchorWasResolved;
 
+// Where in the YAML this object starts, counting from 1.
+@property (nonatomic, readonly) NSUInteger startLine;
+@property (nonatomic, readonly) NSUInteger startColumn;
+
 - (id)nextUnkeyedObject;
 - (id)keyedObjectForKey:(id)key;
 

@@ -19,6 +19,9 @@ struct yaml_parser_s;
 - (void)popUnarchivingObject;
 - (NSUInteger)unarchivingObjectStackDepth;
 
+// Where in the YAML the object that is being decoded starts.  (The line is 0 if there isn't one.)
+- (void)getLine:(NSUInteger *)line column:(NSUInteger *)column;
+
 @property (nonatomic, readonly) BOOL localTagsDisallowed;
 
 - (id)_decodeRootObjectWithError:(NSError **)error;

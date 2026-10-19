@@ -3,7 +3,21 @@ More thorough testing of date parsing, inc. better testing of time zones.
 
 NSKeyed(Un)Archiver Features:
 
-Conditional objects.
+Conditional objects (-encodeConditionalObject:forKey:).  It's currently the same
+as -encodeObject:forKey:, so the object is always encoded.  That matters,
+because AppKit views call it from their own encodeWithCoder: for links like the
+superview (UIKit's probably do too, but that hasn't been checked), which should
+only be written if the other object is in the archive.  As it is, archiving a
+subview also writes its superview, and that view's other subviews.  (Making it
+raise as unsupported isn't an option: it makes NSView and NSButton fail to
+archive.)  It could be done with the two
+passes: when it's called, add a placeholder child, then resolve each
+placeholder in -finishEncoding, before anything is emitted.  If the object
+was encoded unconditionally somewhere else in the archive (it's in the table
+of objects that's used to find objects that need anchors) the placeholder
+becomes an alias to it, and the object is marked as needing an anchor.  If it
+wasn't, the key is left out, which decodes as nil.  The unkeyed
+-encodeConditionalObject: could be the same.
 NSKeyedArchiverDelegate equivalent.
 setClass:forClassName:
 classForClassName:

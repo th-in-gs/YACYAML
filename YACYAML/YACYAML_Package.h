@@ -24,3 +24,12 @@ extern NSError *YACYAMLErrorForMissingDocument(void);
 extern NSError *YACYAMLErrorForUnexpectedClass(Class expectedClass, id object);
 extern NSError *YACYAMLErrorForEmitter(yaml_emitter_t *emitter);
 extern NSError *YACYAMLErrorForFile(NSString *path, int errorNumber, BOOL writing);
+
+// For failures while decoding: where in the YAML the node that was being decoded starts (a line
+// of 0 means that it isn't known).  The position goes in the reason of the exception, and in its
+// userInfo, under YACYAMLErrorLineKey and YACYAMLErrorColumnKey.  It's added where it's raised,
+// not later, so that the exception keeps its call stack.
+extern void YACYAMLRaiseDecodingException(NSString *name, NSString *reason, NSUInteger line, NSUInteger column) __attribute__((noreturn));
+
+// Raises a YACYAMLUnsupportedMethodException, for a method of NSCoder that is not supported.
+extern void YACYAMLRaiseUnsupportedMethod(id object, SEL selector, NSString *advice) __attribute__((noreturn));

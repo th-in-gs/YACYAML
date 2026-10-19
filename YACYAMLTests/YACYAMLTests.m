@@ -174,6 +174,76 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
 
 @end
 
+// Objects whose initWithCoder: fails in the ways that the unarchiver reports.
+@interface YACYAMLUnsupportedTypeObject : NSObject <NSCoding>
+@end
+
+@implementation YACYAMLUnsupportedTypeObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    struct { int unsupported; } value;
+    [coder decodeValueOfObjCType:"{unsupported=i}" at:&value];
+    return [super init];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+}
+
+@end
+
+// Decodes its bytes with a minimum length that they meet, and some that aren't there.
+@interface YACYAMLMinimumBytesObject : NSObject <NSCoding>
+@property (nonatomic, assign) BOOL decodedBytes;
+@property (nonatomic, assign) BOOL missingBytesWereNull;
+@end
+
+@implementation YACYAMLMinimumBytesObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+        const uint8_t *bytes = [coder decodeBytesForKey:@"bytes" minimumLength:3];
+        _decodedBytes = (bytes != NULL && memcmp(bytes, "abc", 3) == 0);
+        _missingBytesWereNull = ([coder decodeBytesForKey:@"missing" minimumLength:6] == NULL);
+#pragma clang diagnostic pop
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeBytes:(const uint8_t *)"abc" length:3 forKey:@"bytes"];
+}
+
+@end
+
+@interface YACYAMLShortBytesObject : NSObject <NSCoding>
+@end
+
+@implementation YACYAMLShortBytesObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    // This NSCoder method is newer than our deployment target.  The unarchiver implements it
+    // whatever the system it's running on, so there's no need to check for that.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+    [coder decodeBytesForKey:@"bytes" minimumLength:6];
+#pragma clang diagnostic pop
+    return [super init];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+}
+
+@end
+
 // Objects that provide their own YAML encoding, with a global tag and with a local one.
 @interface YACYAMLGlobalTagObject : NSObject
 @end
@@ -2269,6 +2339,142 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     // An object that isn't a collection, with nothing to encode, is still an empty sequence.
     archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:[[YACYAMLNormalObject alloc] init]];
     XCTAssertTrue([archived rangeOfString:@"[]"].location != NSNotFound, @"Got %@", archived);
+}
+
+- (void)testDecodingFailuresReportPosition
+{
+    // The exceptions that the unarchiver raises when decoding fails say where in the YAML the
+    // object that was being decoded starts, in their reason and in their userInfo.
+    // (It's added where they're raised, so they keep their call stacks.)
+    
+    NSString *unsupportedType =
+        @"- first\n"
+        @"- second\n"
+        @"- !YACYAMLUnsupportedTypeObject\n"
+        @"  child: x\n";
+    NSString *anchorReplacement =
+        @"parent: &anchor !YACYAMLCapturingReplacingObject\n"
+        @"  child: *anchor\n";
+    
+    NSArray *cases = @[ @[ unsupportedType, YACYAMLUnsupportedTypeException, @3 ],
+                        @[ anchorReplacement, YACYAMLAnchorReplacementException, @1 ] ];
+    for(NSArray *testCase in cases) {
+        NSString *yaml = testCase[0];
+        NSException *caught = nil;
+        @try {
+            [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+        } @catch(NSException *exception) {
+            caught = exception;
+        }
+        
+        NSNumber *expectedLine = testCase[2];
+        XCTAssertEqualObjects(caught.name, testCase[1], @"%@", yaml);
+        NSString *expectedText = [NSString stringWithFormat:@"line %@", expectedLine];
+        XCTAssertTrue([caught.reason rangeOfString:expectedText].location != NSNotFound,
+                      @"Reason \"%@\" should say %@", caught.reason, expectedText);
+        
+        NSDictionary *info = caught.userInfo;
+        XCTAssertEqualObjects(info[YACYAMLErrorLineKey], expectedLine, @"%@", yaml);
+        XCTAssertTrue([info[YACYAMLErrorColumnKey] unsignedIntegerValue] >= 1, @"%@", yaml);
+        
+        // It was raised where it happened, in the unarchiver, not rebuilt.
+        XCTAssertTrue(caught.callStackSymbols.count > 3, @"%@", caught.callStackSymbols);
+    }
+}
+
+- (void)testUnsupportedCoderMethodsRaise
+{
+    // Methods of NSCoder that are historical, or that don't fit with YAML, raise a clear
+    // exception rather than doing something odd.
+    // (-encodePropertyList: and -decodePropertyList are called by selector, as the iOS SDK doesn't
+    // declare them.)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:[NSMutableData data]];
+    YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[@"value\n" dataUsingEncoding:NSUTF8StringEncoding]];
+    // (__block, as the blocks below need to pass their addresses on.)
+    __block uint8_t byte = 0;
+    __block int value = 0;
+    __block NSUInteger length = 0;
+    
+    NSArray *calls = @[ @[ @"encodePropertyList:", ^{ [archiver performSelector:NSSelectorFromString(@"encodePropertyList:") withObject:@"x"]; } ],
+                        @[ @"encodeBytes:length:", ^{ [archiver encodeBytes:&byte length:1]; } ],
+                        @[ @"encodeArrayOfObjCType:count:at:", ^{ [archiver encodeArrayOfObjCType:"i" count:1 at:&value]; } ],
+                        @[ @"versionForClassName:", ^{ [archiver versionForClassName:@"NSString"]; } ],
+                        @[ @"decodePropertyList", ^{ [unarchiver performSelector:NSSelectorFromString(@"decodePropertyList")]; } ],
+                        @[ @"decodePropertyListForKey:", ^{ [unarchiver decodePropertyListForKey:@"k"]; } ],
+                        @[ @"decodeBytesWithReturnedLength:", ^{ [unarchiver decodeBytesWithReturnedLength:&length]; } ],
+                        @[ @"decodeBytesWithMinimumLength:", ^{ [unarchiver decodeBytesWithMinimumLength:1]; } ],
+                        @[ @"decodeArrayOfObjCType:count:at:", ^{ [unarchiver decodeArrayOfObjCType:"i" count:1 at:&value]; } ],
+                        @[ @"versionForClassName:", ^{ [unarchiver versionForClassName:@"NSString"]; } ] ];
+    for(NSArray *call in calls) {
+        void (^block)(void) = call[1];
+        NSException *caught = nil;
+        @try {
+            block();
+        } @catch(NSException *exception) {
+            caught = exception;
+        }
+        XCTAssertEqualObjects(caught.name, YACYAMLUnsupportedMethodException, @"%@", call[0]);
+        NSString *selectorName = call[0];
+        XCTAssertTrue([caught.reason rangeOfString:selectorName].location != NSNotFound, @"Reason \"%@\" should name %@", caught.reason, selectorName);
+    }
+#pragma clang diagnostic pop
+}
+
+- (void)testSystemVersion
+{
+    // There's no system version in YAML archives, so this is what NSCoder says, from both.
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:[NSMutableData data]];
+    YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[@"value\n" dataUsingEncoding:NSUTF8StringEncoding]];
+    XCTAssertNoThrow([archiver systemVersion]);
+    XCTAssertNoThrow([unarchiver systemVersion]);
+    XCTAssertEqual([archiver systemVersion], [unarchiver systemVersion]);
+}
+
+- (void)testDecodeBytesWithMinimumLengthAndSize
+{
+    // These aren't overridden: like NSKeyedUnarchiver, the unarchiver uses NSCoder's, which
+    // check the length of the bytes, and the size of the type.
+    
+    // The minimum length ones are only in NSCoder from macOS 15.4 and iOS 18.4.
+    if(@available(macOS 15.4, iOS 18.4, *)) {
+        // Bytes that are long enough are returned, and a key that isn't there gives NULL.
+        NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:[[YACYAMLMinimumBytesObject alloc] init]];
+        YACYAMLMinimumBytesObject *decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+        XCTAssertTrue([decoded isKindOfClass:[YACYAMLMinimumBytesObject class]], @"Got %@ from %@", decoded, archived);
+        XCTAssertTrue(decoded.decodedBytes);
+        XCTAssertTrue(decoded.missingBytesWereNull);
+        
+        // Bytes that are too short fail the decode.
+        NSString *tooShort =
+            @"- !YACYAMLShortBytesObject\n"
+            @"  bytes: !!binary AQID\n";
+        XCTAssertThrows([YACYAMLKeyedUnarchiver unarchiveObjectWithString:tooShort]);
+    }
+    
+    // The size has to match the type.
+    YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[@"5\n" dataUsingEncoding:NSUTF8StringEncoding]];
+    int value = 0;
+    [unarchiver decodeValueOfObjCType:"i" at:&value size:sizeof(value)];
+    XCTAssertEqual(value, 5);
+    
+    unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[@"5\n" dataUsingEncoding:NSUTF8StringEncoding]];
+    XCTAssertThrowsSpecificNamed([unarchiver decodeValueOfObjCType:"i" at:&value size:sizeof(long long)],
+                                 NSException,
+                                 NSInvalidArgumentException);
+}
+
+- (void)testDecodeTopLevelObject
+{
+    // These are NSCoder's, and decode in the same way as -decodeObject.
+    NSError *error = nil;
+    YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[@"[a, b]\n" dataUsingEncoding:NSUTF8StringEncoding]];
+    id object = [unarchiver decodeTopLevelObjectAndReturnError:&error];
+    NSArray *expected = @[ @"a", @"b" ];
+    XCTAssertEqualObjects(object, expected);
+    XCTAssertNil(error);
 }
 
 - (void)testUnarchivedObjectOfClass

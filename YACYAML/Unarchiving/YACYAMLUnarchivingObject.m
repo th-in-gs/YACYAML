@@ -34,9 +34,14 @@
     // Used to detect the hazardous case: initWithCoder: returns a different object
     // AND the anchor was already resolved by a nested object.
     BOOL _anchorWasResolved;
+    
+    NSUInteger _startLine;
+    NSUInteger _startColumn;
 }
 
 @synthesize anchorWasResolved = _anchorWasResolved;
+@synthesize startLine = _startLine;
+@synthesize startColumn = _startColumn;
 
 - (id)representedObject
 {
@@ -59,6 +64,10 @@
         yaml_event_t event; 
         int worked = yaml_parser_parse(parser, &event);
         if(worked) {
+            // The marks count from 0; people count from 1.
+            _startLine = event.start_mark.line + 1;
+            _startColumn = event.start_mark.column + 1;
+            
             switch(event.type) {
                 case YAML_STREAM_START_EVENT:
                     NSLog(@"Warning: Unexpected stream start event from YAML parser.");
@@ -342,10 +351,12 @@
         // This is the hazardous case: nested object resolved our anchor, then initWithCoder:
         // replaced self. The nested object now holds a stale reference.
         if (replaced && _anchorWasResolved) {
-            [NSException raise:YACYAMLAnchorReplacementException
-                        format:@"initWithCoder: returned a different object (%@ vs %@) after anchor was resolved by a nested object. "
-                               "This breaks cyclic object graph decoding. The nested object holds a stale reference.",
-                        _representedObject, allocatedObject];
+            YACYAMLRaiseDecodingException(YACYAMLAnchorReplacementException,
+                                          [NSString stringWithFormat:@"initWithCoder: returned a different object (%@ vs %@) after anchor was resolved by a nested object. "
+                                                                      "This breaks cyclic object graph decoding. The nested object holds a stale reference.",
+                                                                      _representedObject, allocatedObject],
+                                          _startLine,
+                                          _startColumn);
         }
 
         //(Re-)annotate the new object with the original map if necessary.
