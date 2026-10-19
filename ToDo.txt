@@ -1,91 +1,105 @@
-More thorough testing of date parsing, inc. better testing of time zones.
+YACYAML To Do
+=============
+
+In priority order: things that are wrong or untested first, then features, then
+ideas.
 
 
-NSKeyed(Un)Archiver Features:
+YAML 1.2.2 update
+-----------------
 
-NSKeyedArchiverDelegate equivalent.
-setClass:forClassName:
-classForClassName:
+- Move to the 1.2 Core schema (spec 10.3.2), or add it as an option?  Scalars
+  use the 1.1 rules (http://yaml.org/type/): y/n/yes/no/on/off booleans, base
+  60 numbers, 0b binary, leading-zero octal, '_' in numbers.  Core has none of
+  those; it adds 0o octal and exponents with no decimal point (1e3).
 
+- Floats: the expression is the 1.1 spec's.  It accepts '.' and repeated dots
+  ('1.2.3' decodes as 1.2) and rejects '_' in the fraction, though the spec's
+  own example (685.230_15e+03) has one.  The 1.2 expression doesn't.  (PyYAML
+  part-fixed this: https://github.com/yaml/pyyaml/pull/497.)  The two float
+  tests lack the newlines between their lines, so they don't test floats.
 
-Ideas:
+- Integers over 64 bits (including base 60) stay strings, with a warning.
+  NSDecimalNumber could hold them exactly (about 39 digits).
 
-Consider making scalar anchors (YACYAMLKeyedArchiverOptionAllowScalarAnchors)
-the default mode for scalars.  That option now only uses an anchor for a scalar
-when that takes up less space than writing the scalar out each time (counting
-the anchor and aliases, but not quotes, or the space after an alias used as a
-mapping key), so it shouldn't make the output longer by more than a character
-or two.  It does make the output harder for a person to read and edit, which is
-why it's not the default.
+- Archiving: strings that 1.2 parsers read as other types but we read as
+  strings (1e3, 1.5e3, 0o17, 08) are written unquoted.  Quote anything either
+  schema would resolve differently.  NSDate is a plain timestamp (1.1; Core
+  reads a string).  An explicit !!timestamp, perhaps optional, would round-trip
+  dates in parsers that know it, at the cost of noise.
 
-Consider YACYAML...OptionDisallowExplicitTags options on the archiver and
-unarchiver, a step up from the DisallowLocalTags ones, for plain, human-readable
-YAML with no explicit tags in it (every node's type comes from implicit
-resolution).  It would imply DisallowLocalTags.
+- A scalar whose content doesn't match its explicit tag (!!int abc) silently
+  becomes a string.
 
-Archiving would raise (in pass 1, like DisallowLocalTags) for any object that
-would be written with an explicit tag: one whose YACYAMLArchivingTag is non-nil
-and whose YACYAMLArchivingTagCanBePlainImplicit is NO.  That is NSData
-(!!binary), NSSet (!!set), classes written as !ClassName, and custom classes
-that don't declare their tag implicit.  Strings, numbers, dates, null, arrays
-and dictionaries are written as they are.  Dates are written as plain
-timestamps, which YAML 1.2 Core parsers read as strings.
-
-Unarchiving would ignore every tag, global ones too (the hook is the
-unarchiver's _shouldIgnoreTag:), so no tag can cause a class to be instantiated,
-registered classes included.  A scalar with an ignored tag is left as a string:
-!!binary data comes back as a string, !!int "5" as "5", !!set as a dictionary
-(and an explicit !!merge << wouldn't merge).  Decide whether it should ignore
-them or raise.
-
-DisallowLocalTags is still needed alongside it, for publishing or reading data
-that includes NSData, NSSet or !!timestamp but no application classes.
-
-Match and parse scalars (especially dates) using a 'proper' parser rather than
-regexes (advantage of regexes is that it's easy to verify that they match
-the specs exactly).
+- libYAML is a 1.1 parser (NEL, LS and PS are line breaks) that accepts %YAML
+  1.2.  Run the yaml-test-suite to see how far from 1.2.2.
 
 
-Swift: the Swift interface is what the Objective-C headers import as.  A Swift
-overlay (Swift source in the library) could add what NSKeyedArchiver and
-NSKeyedUnarchiver have in Swift: the generic, typed
-unarchivedObject(ofClass:from:) -> T?, and Codable support (encodeEncodable(_:forKey:),
-decodeDecodable(_:forKey:) and decodeTopLevelDecodable(_:forKey:)), perhaps with
-a YAMLEncoder and YAMLDecoder.  Until then unarchivedObject(ofClass:from:) returns
-Any, and has to be cast.
+ReadMe
+------
+
+Out of date or incomplete.  Do it with the Swift overlay and 1.2.2 update.
+
+- NSButton example is old output: NSEnabled y (now true), empty
+  NSNextResponder, LucidaGrande NSFont with an anchor.  Now: no
+  NSNextResponder, NSCTFont, NSSubviews: [], many more NSControl keys.
+- Say how to use it from Swift: static library, no module, so the bridging
+  header needs #import <YACYAML/YACYAML.h>.
+- Say unarchivedObject(ofClass:from:) checks the class after decoding, so it is
+  no safeguard against untrusted YAML.
+- Mention the NSCoder methods that raise (property list, unkeyed bytes, C
+  arrays, -versionForClassName:), and that conditional encoding works (a view
+  no longer writes its superview).
+- Say scalar anchors are only used when they make the output smaller.
+- Replace "any OS that supports ARC" with the minimum OSes (macOS 14, iOS 17);
+  recheck the setup steps against a client project.
 
 
-YAML 1.2.2 update:
+NSKeyed(Un)Archiver parity
+--------------------------
 
-Decide whether to move to the 1.2 Core schema (spec section 10.3.2), or to add
-it as an option.  Scalars are currently resolved using the YAML 1.1 rules
-(http://yaml.org/type/): y/n/yes/no/on/off booleans, base 60 numbers, 0b
-binary, leading-zero octal and '_' in numbers.  Core has none of those; it
-adds 0o octal, and exponents with an optional sign and no decimal point (1e3).
+(Secure coding is left out on purpose: DisallowInitWithCoder and
+DisallowLocalTags are our safeguards.)
 
-The float expression is the one from the YAML 1.1 spec, unchanged.  It accepts
-'.' and repeated dots (so '1.2.3' decodes as 1.2), and it rejects '_' in the
-fraction, although the spec's own example (685.230_15e+03) has one.  The 1.2
-expression doesn't have these problems.  (PyYAML fixed part of this in
-https://github.com/yaml/pyyaml/pull/497.)  testPositiveFloatParsing and
-testNegativePositiveFloatParsing are missing the newlines between their lines,
-so they don't test floats at all.  Fix them along with the expression.
+- Delegate equivalents (NSKeyedArchiverDelegate, NSKeyedUnarchiverDelegate).
+- Class name mapping: setClassName:forClass:, classNameForClass:,
+  setClass:forClassName:, classForClassName: (class and instance versions).
+- Substitution hooks: classForKeyedArchiver,
+  replacementObjectForKeyedArchiver:, classForKeyedUnarchiver.
 
-Integers that don't fit in 64 bits (including base 60 ones) are left as
-strings, with a warning.  They could be NSDecimalNumbers (a subclass of
-NSNumber) when that holds the value exactly (about 39 digits).
 
-Archiving: strings that a YAML 1.2 parser reads as something else, but that
-this decoder reads as strings (1e3, 1.5e3, 0o17, 08), are written unquoted.
-Quote anything that either schema would resolve to a different type.  Also,
-NSDate is written as a plain timestamp (a YAML 1.1 type, which Core reads as a
-string).  Writing an explicit !!timestamp tag, perhaps only as an option, would
-let parsers that know the tag read dates back as dates, at the cost of noisier
-output.
+Swift
+-----
 
-A scalar with an explicit tag that its content doesn't match (!!bool maybe,
-!!int abc) silently becomes a string.
+- Swift overlay (Swift source in the library) for what NSKeyedArchiver has in
+  Swift: generic, typed unarchivedObject(ofClass:from:) -> T? (it returns Any
+  for now), and Codable support (encodeEncodable, decodeDecodable,
+  decodeTopLevelDecodable), perhaps with a YAMLEncoder and YAMLDecoder.
 
-libYAML is a YAML 1.1 parser (NEL, LS and PS are line breaks, for example)
-that accepts %YAML 1.2 directives.  Run the yaml-test-suite against it to see
-how far it is from 1.2.2.
+
+Tests
+-----
+
+- Better date parsing tests, especially time zones.
+
+
+Options and ideas
+-----------------
+
+- Make AllowScalarAnchors the default?  It only anchors a scalar when that is
+  smaller, so output grows by at most a character or two, but it is harder for
+  a person to read and edit.
+
+- DisallowExplicitTags options (archiver and unarchiver): plain YAML with no
+  explicit tags.  Implies DisallowLocalTags, which is still needed alone for
+  data with NSData, NSSet or !!timestamp but no application classes.
+  - Archiving: raise in pass 1 for any object written with an explicit tag
+    (YACYAMLArchivingTag non-nil and ...CanBePlainImplicit NO): NSData, NSSet,
+    !ClassName classes, custom classes that don't declare their tag implicit.
+    Dates are written as plain timestamps, which 1.2 Core reads as strings.
+  - Unarchiving: ignore every tag (hook: _shouldIgnoreTag:), so none can cause
+    a class to be instantiated.  !!binary comes back as a string, !!int "5" as
+    "5", !!set as a dictionary, and !!merge << doesn't merge.  Ignore or raise?
+
+- Parse scalars (especially dates) with a proper parser, not regexes.  (Regexes
+  are easy to check against the specs.)
