@@ -408,8 +408,15 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 			toEncode = (__bridge id)*((void **)addr);
 			break;
 		case '*': // (char *) string
-            toEncode = [NSData dataWithBytes:*(const char **)addr 
-                                      length:strlen(*(const char **)addr) + 1];
+            {
+                // Written as data, with its terminating NUL, so that any bytes can be
+                // encoded, not just valid UTF-8.
+                const char *string = *(const char **)addr;
+                if(!string) {
+                    [NSException raise:YACYAMLUnsupportedObjectException format:@"Tried to encode a NULL C string"];
+                }
+                toEncode = [NSData dataWithBytes:string length:strlen(string) + 1];
+            }
 			break;
 		case ':': // SEL
 			toEncode = NSStringFromSelector(*((SEL *)addr));
@@ -418,27 +425,27 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
             toEncode = [NSNumber numberWithChar:*(char *)addr];
             break;
         case 's': // A short
-            toEncode = [NSNumber numberWithShort:*(char *)addr];
+            toEncode = [NSNumber numberWithShort:*(short *)addr];
             break;
         case 'i': // An int
         case 'l': // A long (treated as a 32-bit quantity on 64-bit).
             toEncode = [NSNumber numberWithInt:*(int *)addr];
             break;
         case 'q': // A long long
-            toEncode = [NSNumber numberWithLongLong:*(int *)addr];
+            toEncode = [NSNumber numberWithLongLong:*(long long *)addr];
             break;
         case 'C': // An unsigned char
-            toEncode = [NSNumber numberWithUnsignedChar:*(char *)addr];
+            toEncode = [NSNumber numberWithUnsignedChar:*(unsigned char *)addr];
             break;
         case 'S': // An unsigned short
-            toEncode = [NSNumber numberWithUnsignedShort:*(char *)addr];
+            toEncode = [NSNumber numberWithUnsignedShort:*(unsigned short *)addr];
             break;
         case 'I': // An unsigned int
         case 'L': // An unsigned long
-            toEncode = [NSNumber numberWithUnsignedInt:*(int *)addr];
+            toEncode = [NSNumber numberWithUnsignedInt:*(unsigned int *)addr];
             break;
         case 'Q': // An unsigned long long
-            toEncode = [NSNumber numberWithUnsignedLongLong:*(int *)addr];
+            toEncode = [NSNumber numberWithUnsignedLongLong:*(unsigned long long *)addr];
             break;
         case 'f': // A float
             toEncode = [NSNumber numberWithFloat:*(float *)addr];

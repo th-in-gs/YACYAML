@@ -354,7 +354,9 @@ NSMutableArray *sImplicitScalarClasses = nil;
                       returnedLength:(NSUInteger *)lengthp
 {
     __autoreleasing NSData *data = [self decodeObjectForKey:key];
-    *lengthp = data.length;
+    if(lengthp) {
+        *lengthp = data.length;
+    }
     return data.bytes;
 }
 
@@ -381,8 +383,26 @@ NSMutableArray *sImplicitScalarClasses = nil;
             break;
         case '*': // (char *) string
             {
-                __autoreleasing NSData *stringData = object;
-                *(const char **)data = stringData.bytes;
+                // The caller will treat what we return as a C string, so it must end in a NUL.
+                // The archiver always writes one, but YAML from elsewhere need not have one, and
+                // without it the caller would read off the end of the buffer.  We accept strings
+                // as well as data, so that hand-written YAML can be read.
+                __autoreleasing id stringObject = object;
+                if([stringObject isKindOfClass:[NSData class]]) {
+                    NSData *stringData = stringObject;
+                    if(stringData.length == 0 || ((const char *)stringData.bytes)[stringData.length - 1] != '\0') {
+                        NSMutableData *terminated = [NSMutableData dataWithData:stringData];
+                        [terminated appendBytes:"" length:1];
+                        stringObject = terminated;
+                    }
+                    *(const char **)data = [(NSData *)stringObject bytes];
+                } else if([stringObject isKindOfClass:[NSString class]]) {
+                    *(const char **)data = [(NSString *)stringObject UTF8String];
+                } else if(!stringObject) {
+                    *(const char **)data = NULL;
+                } else {
+                    [NSException raise:YACYAMLUnsupportedTypeException format:@"Tried to decode a C string from something that was not a string or data, %@", [stringObject class]];
+                }
             }
             break;
         case ':': // SEL

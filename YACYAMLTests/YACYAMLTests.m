@@ -143,6 +143,37 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
 
 @end
 
+// An object with some keyed bytes, that decodes them without asking for their length.
+@interface YACYAMLBytesObject : NSObject <NSCoding>
+@property (nonatomic, assign) BOOL decodedBytesWithNullLength;
+@property (nonatomic, assign) BOOL decodedMissingBytesAsNull;
+@property (nonatomic, assign) NSUInteger missingBytesLength;
+@end
+
+@implementation YACYAMLBytesObject
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        const uint8_t *bytes = [coder decodeBytesForKey:@"bytes" returnedLength:NULL];
+        _decodedBytesWithNullLength = (bytes != NULL && memcmp(bytes, "abc", 3) == 0);
+        
+        NSUInteger length = 99;
+        const uint8_t *missing = [coder decodeBytesForKey:@"missing" returnedLength:&length];
+        _decodedMissingBytesAsNull = (missing == NULL && [coder decodeBytesForKey:@"missing" returnedLength:NULL] == NULL);
+        _missingBytesLength = length;
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeBytes:(const uint8_t *)"abc" length:3 forKey:@"bytes"];
+}
+
+@end
+
 // Objects that provide their own YAML encoding, with a global tag and with a local one.
 @interface YACYAMLGlobalTagObject : NSObject
 @end
@@ -2074,6 +2105,130 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     NSArray *native = @[ @"string", @1, @{ @"a": @[ @2.5, [NSNull null] ] } ];
     NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:native options:YACYAMLKeyedArchiverOptionDisallowLocalTags];
     XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived options:YACYAMLKeyedUnarchiverOptionDisallowLocalTags], native);
+}
+
+- (void)testValueOfObjCTypeWidths
+{
+    // The values are chosen to need the whole width of each type: reading only part of
+    // them (a char for a short, or an int for a long long) gives a different number.
+    // Values with every bit set are no good for this, as they survive being narrowed
+    // and then sign extended.
+    // Each value is archived on its own, as unkeyed values at the top level are written
+    // as separate YAML documents, and only the first would be read back.
+    
+    void (^roundTrip)(const char *, const void *, void *, NSString *) =
+        ^(const char *type, const void *value, void *decoded, NSString *expectedYAML) {
+            NSMutableData *data = [NSMutableData data];
+            YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:data];
+            [archiver encodeValueOfObjCType:type at:value];
+            [archiver finishEncoding];
+            
+            NSString *archived = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            XCTAssertTrue([archived hasPrefix:expectedYAML], @"Type %s was archived as %@, not %@", type, archived, expectedYAML);
+            
+            YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:data];
+            [unarchiver decodeValueOfObjCType:type at:decoded];
+        };
+    
+    char c = -100, newC = 0;
+    roundTrip("c", &c, &newC, @"-100");
+    XCTAssertEqual(newC, c);
+    
+    short s = -300, newS = 0;
+    roundTrip("s", &s, &newS, @"-300");
+    XCTAssertEqual(newS, s);
+    
+    int i = -70000, newI = 0;
+    roundTrip("i", &i, &newI, @"-70000");
+    XCTAssertEqual(newI, i);
+    
+    long long q = -(1LL << 40), newQ = 0;
+    roundTrip("q", &q, &newQ, @"-1099511627776");
+    XCTAssertEqual(newQ, q);
+    
+    unsigned char C = 200, newUC = 0;
+    roundTrip("C", &C, &newUC, @"200");
+    XCTAssertEqual(newUC, C);
+    
+    unsigned short S = 300, newUS = 0;
+    roundTrip("S", &S, &newUS, @"300");
+    XCTAssertEqual(newUS, S);
+    
+    unsigned int I = 3000000000u, newUI = 0;
+    roundTrip("I", &I, &newUI, @"3000000000");
+    XCTAssertEqual(newUI, I);
+    
+    unsigned long long Q = 1ULL << 40, newUQ = 0;
+    roundTrip("Q", &Q, &newUQ, @"1099511627776");
+    XCTAssertEqual(newUQ, Q);
+}
+
+- (void)testDecodeBytesWithNullLength
+{
+    // The length is allowed to be NULL, if the caller doesn't need it.  A missing key
+    // gives NULL (and a length of 0, if that's asked for), with either.
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:[[YACYAMLBytesObject alloc] init]];
+    YACYAMLBytesObject *decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertTrue([decoded isKindOfClass:[YACYAMLBytesObject class]], @"Got %@ from %@", decoded, archived);
+    XCTAssertTrue(decoded.decodedBytesWithNullLength);
+    XCTAssertTrue(decoded.decodedMissingBytesAsNull);
+    XCTAssertEqual(decoded.missingBytesLength, (NSUInteger)0);
+}
+
+- (void)testCStringEncodingAndDecoding
+{
+    // C strings (the '*' type) are written as data, with their terminating NUL, so that any
+    // bytes can be encoded, not just valid UTF-8.
+    char utf8[] = "caf\xC3\xA9";
+    char notUTF8[] = { 'a', (char)0xFF, (char)0xFE, 'b', 0 };
+    char empty[] = "";
+    char *strings[] = { utf8, notUTF8, empty };
+    for(NSUInteger i = 0; i < 3; i++) {
+        char *string = strings[i];
+        NSMutableData *data = [NSMutableData data];
+        YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:data];
+        [archiver encodeValueOfObjCType:"*" at:&string];
+        [archiver finishEncoding];
+        
+        char *decoded = NULL;
+        YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:data];
+        [unarchiver decodeValueOfObjCType:"*" at:&decoded];
+        XCTAssertTrue(decoded != NULL && strcmp(decoded, string) == 0, @"String %lu did not round trip", (unsigned long)i);
+    }
+    
+    // A NULL string can't be encoded.
+    NSMutableData *data = [NSMutableData data];
+    YACYAMLKeyedArchiver *archiver = [[YACYAMLKeyedArchiver alloc] initForWritingWithMutableData:data];
+    char *null = NULL;
+    XCTAssertThrowsSpecificNamed([archiver encodeValueOfObjCType:"*" at:&null],
+                                 NSException,
+                                 YACYAMLUnsupportedObjectException);
+    
+    // What's decoded always ends in a NUL, even if the YAML's data doesn't have one (here,
+    // "abc" with nothing after it, and no bytes at all), so that a caller can use it as a C
+    // string without reading off the end of it.  Hand-written strings are read as well.
+    NSDictionary *yamlToExpected = @{ @"!!binary YWJj": @"abc",
+                                      @"!!binary YWJjAA==": @"abc",
+                                      @"!!binary \"\"": @"",
+                                      @"hello": @"hello",
+                                      @"'caf\u00e9'": @"caf\u00e9" };
+    for(NSString *yaml in yamlToExpected) {
+        char *decoded = NULL;
+        YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[yaml dataUsingEncoding:NSUTF8StringEncoding]];
+        [unarchiver decodeValueOfObjCType:"*" at:&decoded];
+        NSString *expected = yamlToExpected[yaml];
+        XCTAssertTrue(decoded != NULL && strcmp(decoded, expected.UTF8String) == 0, @"%@ was decoded as %s", yaml, decoded);
+    }
+    
+    // Anything else can't be a C string.
+    for(NSString *yaml in @[ @"[1, 2]", @"{ a: b }" ]) {
+        char *decoded = NULL;
+        YACYAMLKeyedUnarchiver *unarchiver = [[YACYAMLKeyedUnarchiver alloc] initForReadingWithData:[yaml dataUsingEncoding:NSUTF8StringEncoding]];
+        XCTAssertThrowsSpecificNamed([unarchiver decodeValueOfObjCType:"*" at:&decoded],
+                                     NSException,
+                                     YACYAMLUnsupportedTypeException,
+                                     @"%@", yaml);
+    }
 }
 
 @end
