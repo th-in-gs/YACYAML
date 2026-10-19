@@ -19,6 +19,15 @@ struct yaml_emitter_s;
                     forArchiver:(YACYAMLKeyedArchiver *)archiver;
 - (void)encodeChild:(id)obj forKey:(id)key;
 
+// Adds a placeholder for a child that is only to be encoded if it's encoded (unconditionally)
+// somewhere else in the archive.  -resolveConditionalChild:withTarget: is called for it,
+// when the archive is finished, to say which.
+- (void)encodeConditionalChild:(id)obj forKey:(id)key;
+- (void)resolveConditionalChild:(YACYAMLArchivingObject *)placeholder withTarget:(YACYAMLArchivingObject *)target;
+
+// For a placeholder: the object that it is a child of.
+@property (nonatomic, unsafe_unretained) YACYAMLArchivingObject *conditionalParent;
+
 - (void)emitWithEmitter:(struct yaml_emitter_s *)emitter;
 
 @end

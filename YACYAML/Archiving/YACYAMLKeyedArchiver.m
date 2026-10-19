@@ -48,6 +48,9 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
     CFMutableDictionaryRef _archivedObjectToItem;
     NSMutableArray *_nonAnchoringObjects;
     
+    // The placeholders for objects that are only to be encoded if they're encoded elsewhere.
+    NSMutableArray *_conditionalArchivingObjects;
+    
     NSUInteger _generatedAnchorCount;
 }
 
@@ -207,6 +210,8 @@ static Boolean YACYAMLArchivedObjectsEqual(const void *value1, const void *value
     // since they won't be retained in the _archivedObjectToItem dictionary.
     _nonAnchoringObjects = [[NSMutableArray alloc] init];
     
+    _conditionalArchivingObjects = [[NSMutableArray alloc] init];
+    
     _scalarAnchorsAllowed = ((options & YACYAMLKeyedArchiverOptionAllowScalarAnchors) == YACYAMLKeyedArchiverOptionAllowScalarAnchors);
     
     _localTagsDisallowed = ((options & YACYAMLKeyedArchiverOptionDisallowLocalTags) == YACYAMLKeyedArchiverOptionDisallowLocalTags);
@@ -272,6 +277,8 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 - (BOOL)_finishEncodingWithError:(NSError **)error
 {
     BOOL success = YES;
+    
+    [self _resolveConditionalArchivingObjects];
     
     yaml_emitter_t emitter;
     yaml_emitter_initialize(&emitter);
@@ -358,6 +365,22 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 - (void)noteNonAnchoringObject:(YACYAMLArchivingObject *)archivingObject
 {
     [_nonAnchoringObjects addObject:archivingObject];
+}
+
+- (void)noteConditionalArchivingObject:(YACYAMLArchivingObject *)placeholder
+{
+    [_conditionalArchivingObjects addObject:placeholder];
+}
+
+// Now that everything has been encoded, we know which of the objects that were only to be
+// encoded if they were encoded elsewhere were.
+- (void)_resolveConditionalArchivingObjects
+{
+    for(YACYAMLArchivingObject *placeholder in _conditionalArchivingObjects) {
+        YACYAMLArchivingObject *target = [self previouslySeenArchivingObjectForObject:placeholder.representedObject];
+        [placeholder.conditionalParent resolveConditionalChild:placeholder withTarget:target];
+    }
+    [_conditionalArchivingObjects removeAllObjects];
 }
 
 - (YACYAMLArchivingObject *)previouslySeenArchivingObjectForObject:(id)object
@@ -458,12 +481,20 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
 
 - (void)encodeConditionalObject:(id)objv forKey:(NSString *)key
 {
-    // This should only encode the object if it's encoded unconditionally somewhere else in the
-    // archive, but it always encodes it.  Classes use it for links that they don't own, like
-    // AppKit's views do for their superview, so archiving a view also writes its superview, and
-    // that view's other subviews.  It can't raise as unsupported, either: that would make
-    // NSView and NSButton fail to archive.  See ToDo.txt for how it could be done.
-    [self encodeObject:objv forKey:key];
+    // Classes use this for links to objects that they don't own, like AppKit's views do for their
+    // superview and next responder.  The object is only encoded if it's encoded (with
+    // encodeObject:forKey: etc) somewhere else in the archive.  (As for -_encodeObject:forKey:,
+    // nothing is encoded for nil.)
+    if(objv != nil) {
+        [[_archivingObjectStack lastObject] encodeConditionalChild:objv forKey:key];
+    }
+}
+
+- (void)encodeConditionalObject:(id)object
+{
+    if(object != nil) {
+        [[_archivingObjectStack lastObject] encodeConditionalChild:object forKey:nil];
+    }
 }
 
 - (void)encodeBool:(BOOL)boolv forKey:(NSString *)key

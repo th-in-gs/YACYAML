@@ -196,4 +196,67 @@ final class YACYAMLSwiftViewTests: YACYAMLSwiftTestCase {
             XCTAssertTrue(nsError.localizedDescription.contains("different object"), nsError.localizedDescription)
         }
     }
+
+    #if os(macOS)
+    func testNSViewSuperviewIsConditional() throws {
+        // A view encodes its superview conditionally, so archiving a view doesn't also archive its superview,
+        // or that view's other subviews, but archiving the superview does bring its subviews, and they
+        // still have it as their superview.
+        let parent = NSView(frame: NSRect(x: 0, y: 0, width: 100, height: 100))
+        let child = NSView(frame: NSRect(x: 1, y: 2, width: 10, height: 10))
+        let sibling = NSView(frame: NSRect(x: 5, y: 5, width: 10, height: 10))
+        parent.identifier = NSUserInterfaceItemIdentifier("the-parent")
+        child.identifier = NSUserInterfaceItemIdentifier("the-child")
+        sibling.identifier = NSUserInterfaceItemIdentifier("the-sibling")
+        parent.addSubview(child)
+        parent.addSubview(sibling)
+
+        var archived: String = try YACYAMLKeyedArchiver.archivedString(withRootObject: child)
+        XCTAssertTrue(archived.contains("the-child"), archived)
+        XCTAssertFalse(archived.contains("the-parent"), "The superview was archived:\n\(archived)")
+        XCTAssertFalse(archived.contains("the-sibling"), "A sibling was archived:\n\(archived)")
+        let decodedChild = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? NSView)
+        XCTAssertEqual(decodedChild.identifier?.rawValue, "the-child")
+        XCTAssertNil(decodedChild.superview)
+
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: parent)
+        let decodedParent = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? NSView)
+        XCTAssertEqual(decodedParent.identifier?.rawValue, "the-parent")
+        XCTAssertEqual(decodedParent.subviews.map { $0.identifier?.rawValue }, ["the-child", "the-sibling"])
+        XCTAssertTrue(decodedParent.subviews.allSatisfy { $0.superview === decodedParent })
+        XCTAssertEqual(try YACYAMLKeyedArchiver.archivedString(withRootObject: decodedParent), archived)
+    }
+    #endif
+
+    #if os(iOS)
+    func testUIViewSuperviewIsConditional() throws {
+        // See testNSViewSuperviewIsConditional.  UIKit's views don't encode their superview (it's set when
+        // their superview decodes its subviews), so this doesn't use conditional encoding, but it checks
+        // that views are still archived on their own, and with their subviews.  (UIView archives its tag,
+        // so that's used to tell the views apart.)
+        let parent = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let child = UIView(frame: CGRect(x: 1, y: 2, width: 10, height: 10))
+        let sibling = UIView(frame: CGRect(x: 5, y: 5, width: 10, height: 10))
+        parent.tag = 50211
+        child.tag = 50212
+        sibling.tag = 50213
+        parent.addSubview(child)
+        parent.addSubview(sibling)
+
+        var archived: String = try YACYAMLKeyedArchiver.archivedString(withRootObject: child)
+        XCTAssertTrue(archived.contains("50212"), archived)
+        XCTAssertFalse(archived.contains("50211"), "The superview was archived:\n\(archived)")
+        XCTAssertFalse(archived.contains("50213"), "A sibling was archived:\n\(archived)")
+        let decodedChild = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? UIView)
+        XCTAssertEqual(decodedChild.tag, 50212)
+        XCTAssertNil(decodedChild.superview)
+
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: parent)
+        let decodedParent = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? UIView)
+        XCTAssertEqual(decodedParent.tag, 50211)
+        XCTAssertEqual(decodedParent.subviews.map { $0.tag }, [50212, 50213])
+        XCTAssertTrue(decodedParent.subviews.allSatisfy { $0.superview === decodedParent })
+        XCTAssertEqual(try YACYAMLKeyedArchiver.archivedString(withRootObject: decodedParent), archived)
+    }
+    #endif
 }

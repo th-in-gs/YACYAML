@@ -42,11 +42,14 @@
     BOOL _needsAnchor;
     NSUInteger _reuseCount;
     NSString *_emittedAnchor;
+    
+    __unsafe_unretained YACYAMLArchivingObject *_conditionalParent;
 }
 
 @synthesize representedObject = _representedObject;
 @synthesize needsAnchor = _needsAnchor;
 @synthesize reuseCount = _reuseCount;
+@synthesize conditionalParent = _conditionalParent;
 
 - (id)initWithRepresentedObject:(id)representedObject
                     forArchiver:(YACYAMLKeyedArchiver *)archiver
@@ -123,7 +126,11 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
     // CFMutableArrays that don't retain their contents here insead of
     // regular contents-retaining NSMutableArrays.
     
-    YACYAMLArchivingObject *archivingObject = [self _archivingObjectForObject:obj];
+    [self _appendChild:[self _archivingObjectForObject:obj] forKey:key];
+}
+
+- (void)_appendChild:(YACYAMLArchivingObject *)archivingObject forKey:(id)key
+{
     if(key) {
         if(!_keyedChildren) {
             _keyedChildren = CreateNonRetainingArray();
@@ -135,6 +142,48 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
             _unkeyedChildren = CreateNonRetainingArray();
         }
         CFArrayAppendValue(_unkeyedChildren, (__bridge CFTypeRef)archivingObject);
+    }
+}
+
+- (void)encodeConditionalChild:(id)obj forKey:(id)key
+{
+    // The object is not encoded, or looked up, now.  Whether it's been encoded
+    // elsewhere isn't known until the whole archive has been, so a placeholder
+    // goes where the child will go, and is resolved (see below) before anything is emitted.
+    YACYAMLArchivingObject *placeholder = [[YACYAMLArchivingObject alloc] initWithRepresentedObject:obj
+                                                                                        forArchiver:_archiver];
+    placeholder.conditionalParent = self;
+    [_archiver noteConditionalArchivingObject:placeholder];
+    [self _appendChild:placeholder forKey:key];
+}
+
+- (void)resolveConditionalChild:(YACYAMLArchivingObject *)placeholder withTarget:(YACYAMLArchivingObject *)target
+{
+    // If the object was encoded elsewhere, the placeholder is replaced by that object's
+    // YACYAMLArchivingObject, as if the child had been encoded unconditionally and had been seen
+    // before, so it's emitted in the same way: in full, with an anchor, wherever it's reached
+    // first, and as an alias after that.  If it wasn't, the child (and, for a keyed
+    // child, its key) is left out.
+    CFMutableArrayRef children = _keyedChildren;
+    CFIndex index = children ? CFArrayGetFirstIndexOfValue(children, CFRangeMake(0, CFArrayGetCount(children)), (__bridge const void *)placeholder) : kCFNotFound;
+    if(index == kCFNotFound) {
+        children = _unkeyedChildren;
+        index = children ? CFArrayGetFirstIndexOfValue(children, CFRangeMake(0, CFArrayGetCount(children)), (__bridge const void *)placeholder) : kCFNotFound;
+    }
+    if(index == kCFNotFound) {
+        return;
+    }
+    
+    if(target) {
+        target.needsAnchor = YES;
+        target.reuseCount += 1;
+        CFArraySetValueAtIndex(children, index, (__bridge const void *)target);
+    } else {
+        CFArrayRemoveValueAtIndex(children, index);
+        if(children == _keyedChildren) {
+            // Keyed children are pairs of a key and a value, and this was the value.
+            CFArrayRemoveValueAtIndex(children, index - 1);
+        }
     }
 }
 

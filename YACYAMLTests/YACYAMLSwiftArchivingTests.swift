@@ -344,4 +344,64 @@ final class YACYAMLSwiftArchivingTests: YACYAMLSwiftTestCase {
             XCTAssertEqual(result.exception?.name, .yacyamlUnsupportedType, yaml)
         }
     }
+
+    func testConditionalObjects() throws {
+        // An object that's encoded conditionally is only written if it's encoded, unconditionally,
+        // somewhere else in the archive.
+
+        // Not encoded anywhere else: it's left out, and decodes as nil.
+        let other = ConditionalNode(name: "other-node")
+        let node = ConditionalNode(name: "the-node")
+        node.conditionalLink = other
+        var archived: String = try YACYAMLKeyedArchiver.archivedString(withRootObject: node)
+        XCTAssertTrue(archived.contains("the-node"), archived)
+        XCTAssertFalse(archived.contains("other-node"), archived)
+        var decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
+        XCTAssertNil(decoded.conditionalLink)
+
+        // Encoded elsewhere, whether that's before or after it.  It's written once, and the other
+        // use is a reference to it.
+        for conditionalFirst in [false, true] {
+            node.firstLink = other
+            node.conditionalLinkFirst = conditionalFirst
+            archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: node)
+            XCTAssertEqual(archived.components(separatedBy: "other-node").count, 2, "Written more than once, conditional first: \(conditionalFirst)\n\(archived)")
+            XCTAssertTrue(archived.contains("&") && archived.contains("*"), "No anchor or alias: \(archived)")
+
+            decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
+            XCTAssertEqual(decoded.firstLink?.name, "other-node", archived)
+            XCTAssertTrue(decoded.conditionalLink === decoded.firstLink, "Not the same object, conditional first: \(conditionalFirst)\n\(archived)")
+        }
+
+        // Encoded elsewhere because it's in a collection that the object owns.
+        node.firstLink = nil
+        node.conditionalLinkFirst = true
+        node.children = [other]
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: node)
+        decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
+        XCTAssertEqual(decoded.children?.count, 1)
+        XCTAssertTrue(decoded.conditionalLink === decoded.children?.first, "Not the same object:\n\(archived)")
+
+        // A link back to something that owns the object, as a view's superview is.
+        let parent = ConditionalNode(name: "parent-node")
+        let child = ConditionalNode(name: "child-node")
+        child.conditionalLink = parent
+        parent.children = [child]
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: parent)
+        decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
+        XCTAssertEqual(decoded.children?.count, 1)
+        XCTAssertTrue(decoded.children?.first?.conditionalLink === decoded, "Not the parent:\n\(archived)")
+
+        // Encoding the child on its own doesn't bring the parent with it.
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: child)
+        XCTAssertFalse(archived.contains("parent-node"), archived)
+        decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
+        XCTAssertEqual(decoded.name, "child-node")
+        XCTAssertNil(decoded.conditionalLink)
+
+        // It's the same when pointer equality is used, and when scalars are allowed anchors.
+        archived = try YACYAMLKeyedArchiver.archivedString(withRootObject: parent, options: [.dontUseObjectEquality, .allowScalarAnchors])
+        decoded = try XCTUnwrap(YACYAMLKeyedUnarchiver.unarchivedObject(from: archived) as? ConditionalNode)
+        XCTAssertTrue(decoded.children?.first?.conditionalLink === decoded, "Not the parent:\n\(archived)")
+    }
 }

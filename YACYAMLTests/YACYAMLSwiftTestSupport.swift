@@ -179,3 +179,40 @@ final class BytesObject: NSObject, NSCoding {
     }
 }
 
+/// An object with links to other objects, some that it owns, and some that it only wants encoded if
+/// they are encoded elsewhere in the archive.
+@objc(YACYAMLSwiftConditionalNode)
+final class ConditionalNode: NSObject, NSCoding {
+    var name: String?
+    var children: [ConditionalNode]?
+    var firstLink: ConditionalNode?
+    var conditionalLink: ConditionalNode?
+    /// If this is set, the links are encoded in the opposite order, and the conditional one is first.
+    var conditionalLinkFirst = false
+
+    init(name: String) {
+        self.name = name
+        super.init()
+    }
+
+    required init?(coder: NSCoder) {
+        name = coder.decodeObject(forKey: "name") as? String
+        children = coder.decodeObject(forKey: "children") as? [ConditionalNode]
+        firstLink = coder.decodeObject(forKey: "firstLink") as? ConditionalNode
+        conditionalLink = coder.decodeObject(forKey: "conditionalLink") as? ConditionalNode
+        super.init()
+    }
+
+    func encode(with coder: NSCoder) {
+        coder.encode(name, forKey: "name")
+        if conditionalLinkFirst {
+            coder.encodeConditionalObject(conditionalLink, forKey: "conditionalLink")
+            coder.encode(firstLink, forKey: "firstLink")
+        } else {
+            coder.encode(firstLink, forKey: "firstLink")
+            coder.encodeConditionalObject(conditionalLink, forKey: "conditionalLink")
+        }
+        coder.encode(children, forKey: "children")
+    }
+}
+

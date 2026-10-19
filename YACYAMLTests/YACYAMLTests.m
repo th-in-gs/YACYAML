@@ -244,6 +244,81 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
 
 @end
 
+// An object with links to other objects, some that it owns, and some that it only wants encoded if
+// they are encoded elsewhere in the archive.
+@interface YACYAMLConditionalNode : NSObject <NSCoding>
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, strong) NSArray *children;
+@property (nonatomic, strong) YACYAMLConditionalNode *firstLink;
+@property (nonatomic, strong) YACYAMLConditionalNode *conditionalLink;
+// If this is set, the links are encoded in the opposite order, and the conditional one is first.
+@property (nonatomic, assign) BOOL conditionalLinkFirst;
+@end
+
+@implementation YACYAMLConditionalNode
+
+- (instancetype)initWithName:(NSString *)name
+{
+    self = [super init];
+    if (self) {
+        _name = [name copy];
+    }
+    return self;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _name = [coder decodeObjectForKey:@"name"];
+        _children = [coder decodeObjectForKey:@"children"];
+        _firstLink = [coder decodeObjectForKey:@"firstLink"];
+        _conditionalLink = [coder decodeObjectForKey:@"conditionalLink"];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self.name forKey:@"name"];
+    if(self.conditionalLinkFirst) {
+        [coder encodeConditionalObject:self.conditionalLink forKey:@"conditionalLink"];
+        [coder encodeObject:self.firstLink forKey:@"firstLink"];
+    } else {
+        [coder encodeObject:self.firstLink forKey:@"firstLink"];
+        [coder encodeConditionalObject:self.conditionalLink forKey:@"conditionalLink"];
+    }
+    [coder encodeObject:self.children forKey:@"children"];
+}
+
+@end
+
+// The same, with unkeyed coding.
+@interface YACYAMLUnkeyedConditionalNode : NSObject <NSCoding>
+@property (nonatomic, strong) id link;
+@property (nonatomic, strong) id conditionalLink;
+@end
+
+@implementation YACYAMLUnkeyedConditionalNode
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _link = [coder decodeObject];
+        _conditionalLink = [coder decodeObject];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self.link];
+    [coder encodeConditionalObject:self.conditionalLink];
+}
+
+@end
+
 // Objects that provide their own YAML encoding, with a global tag and with a local one.
 @interface YACYAMLGlobalTagObject : NSObject
 @end
@@ -2499,5 +2574,157 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     // And it is fine with NULL for the error.
     XCTAssertNil([YACYAMLKeyedUnarchiver unarchivedObjectOfClass:[NSDictionary class] fromData:data error:NULL]);
 }
+
+- (void)testConditionalObjects
+{
+    // An object that's encoded conditionally is only written if it's encoded, unconditionally,
+    // somewhere else in the archive.
+    
+    // Not encoded anywhere else: it's left out, and decodes as nil.
+    YACYAMLConditionalNode *other = [[YACYAMLConditionalNode alloc] initWithName:@"other-node"];
+    YACYAMLConditionalNode *node = [[YACYAMLConditionalNode alloc] initWithName:@"the-node"];
+    node.conditionalLink = other;
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:node];
+    XCTAssertTrue([archived rangeOfString:@"the-node"].location != NSNotFound, @"Got %@", archived);
+    XCTAssertTrue([archived rangeOfString:@"other-node"].location == NSNotFound, @"Got %@", archived);
+    YACYAMLConditionalNode *decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertNotNil(decoded);
+    XCTAssertNil(decoded.conditionalLink);
+    
+    // Encoded elsewhere, whether that's before or after it.  It's written once, and the other
+    // use is a reference to it.
+    for(NSNumber *conditionalFirst in @[ @NO, @YES ]) {
+        node.firstLink = other;
+        node.conditionalLinkFirst = conditionalFirst.boolValue;
+        archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:node];
+        XCTAssertEqual([archived componentsSeparatedByString:@"other-node"].count, (NSUInteger)2, @"Written more than once, conditional first: %@\n%@", conditionalFirst, archived);
+        XCTAssertTrue([archived rangeOfString:@"&"].location != NSNotFound && [archived rangeOfString:@"*"].location != NSNotFound, @"No anchor or alias: %@", archived);
+        
+        decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+        XCTAssertEqualObjects(decoded.firstLink.name, @"other-node", @"%@", archived);
+        XCTAssertTrue(decoded.conditionalLink == decoded.firstLink, @"Not the same object, conditional first: %@\n%@", conditionalFirst, archived);
+    }
+    
+    // Encoded elsewhere because it's in a collection that the object owns.
+    node.firstLink = nil;
+    node.conditionalLinkFirst = YES;
+    node.children = @[ other ];
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:node];
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqual(decoded.children.count, (NSUInteger)1);
+    XCTAssertTrue(decoded.conditionalLink == decoded.children[0], @"Not the same object:\n%@", archived);
+    
+    // A link back to something that owns the object, as a view's superview is.
+    YACYAMLConditionalNode *parent = [[YACYAMLConditionalNode alloc] initWithName:@"parent-node"];
+    YACYAMLConditionalNode *child = [[YACYAMLConditionalNode alloc] initWithName:@"child-node"];
+    child.conditionalLink = parent;
+    parent.children = @[ child ];
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:parent];
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqual(decoded.children.count, (NSUInteger)1);
+    XCTAssertTrue(((YACYAMLConditionalNode *)decoded.children[0]).conditionalLink == decoded, @"Not the parent:\n%@", archived);
+    
+    // Encoding the child on its own doesn't bring the parent with it.
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:child];
+    XCTAssertTrue([archived rangeOfString:@"parent-node"].location == NSNotFound, @"Got %@", archived);
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqualObjects(decoded.name, @"child-node");
+    XCTAssertNil(decoded.conditionalLink);
+    
+    // It's the same when pointer equality is used, and when scalars are allowed anchors.
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:parent
+                                                          options:YACYAMLKeyedArchiverOptionDontUseObjectEquality | YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertTrue(((YACYAMLConditionalNode *)decoded.children[0]).conditionalLink == decoded, @"Not the parent:\n%@", archived);
+}
+
+- (void)testUnkeyedConditionalObjects
+{
+    // The unkeyed form is the same.
+    YACYAMLConditionalNode *other = [[YACYAMLConditionalNode alloc] initWithName:@"other-node"];
+    YACYAMLUnkeyedConditionalNode *node = [[YACYAMLUnkeyedConditionalNode alloc] init];
+    node.link = other;
+    node.conditionalLink = other;
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:node];
+    YACYAMLUnkeyedConditionalNode *decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqualObjects([decoded.link name], @"other-node", @"%@", archived);
+    XCTAssertTrue(decoded.conditionalLink == decoded.link, @"Not the same object:\n%@", archived);
+    
+    // Left out if it's not encoded elsewhere.
+    node.link = @"a link";
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:node];
+    XCTAssertTrue([archived rangeOfString:@"other-node"].location == NSNotFound, @"Got %@", archived);
+}
+
+#if TARGET_OS_OSX
+- (void)testNSViewSuperviewIsConditional
+{
+    // A view encodes its superview conditionally, so archiving a view doesn't also archive its superview,
+    // or that view's other subviews, but archiving the superview does bring its subviews, and they
+    // still have it as their superview.
+    NSView *parent = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 100, 100)];
+    NSView *child = [[NSView alloc] initWithFrame:NSMakeRect(1, 2, 10, 10)];
+    NSView *sibling = [[NSView alloc] initWithFrame:NSMakeRect(5, 5, 10, 10)];
+    parent.identifier = @"the-parent";
+    child.identifier = @"the-child";
+    sibling.identifier = @"the-sibling";
+    [parent addSubview:child];
+    [parent addSubview:sibling];
+    
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:child];
+    XCTAssertTrue([archived rangeOfString:@"the-child"].location != NSNotFound);
+    XCTAssertTrue([archived rangeOfString:@"the-parent"].location == NSNotFound, @"The superview was archived:\n%@", archived);
+    XCTAssertTrue([archived rangeOfString:@"the-sibling"].location == NSNotFound, @"A sibling was archived:\n%@", archived);
+    NSView *decodedChild = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqualObjects(decodedChild.identifier, @"the-child");
+    XCTAssertNil(decodedChild.superview);
+    
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:parent];
+    NSView *decodedParent = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqualObjects(decodedParent.identifier, @"the-parent");
+    XCTAssertEqual(decodedParent.subviews.count, (NSUInteger)2);
+    XCTAssertEqualObjects([decodedParent.subviews[0] identifier], @"the-child");
+    XCTAssertEqualObjects([decodedParent.subviews[1] identifier], @"the-sibling");
+    XCTAssertTrue([decodedParent.subviews[0] superview] == decodedParent);
+    XCTAssertTrue([decodedParent.subviews[1] superview] == decodedParent);
+    XCTAssertEqualObjects([YACYAMLKeyedArchiver archivedStringWithRootObject:decodedParent], archived);
+}
+#endif
+
+#if TARGET_OS_IOS
+- (void)testUIViewSuperviewIsConditional
+{
+    // See testNSViewSuperviewIsConditional.  UIKit's views don't encode their superview (it's set when
+    // their superview decodes its subviews), so this doesn't use conditional encoding, but it checks that
+    // views are still archived on their own, and with their subviews.  (UIView archives its tag, so
+    // that's used to tell the views apart.)
+    UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    UIView *child = [[UIView alloc] initWithFrame:CGRectMake(1, 2, 10, 10)];
+    UIView *sibling = [[UIView alloc] initWithFrame:CGRectMake(5, 5, 10, 10)];
+    parent.tag = 50211;
+    child.tag = 50212;
+    sibling.tag = 50213;
+    [parent addSubview:child];
+    [parent addSubview:sibling];
+    
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:child];
+    XCTAssertTrue([archived rangeOfString:@"50212"].location != NSNotFound, @"Got %@", archived);
+    XCTAssertTrue([archived rangeOfString:@"50211"].location == NSNotFound, @"The superview was archived:\n%@", archived);
+    XCTAssertTrue([archived rangeOfString:@"50213"].location == NSNotFound, @"A sibling was archived:\n%@", archived);
+    UIView *decodedChild = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqual(decodedChild.tag, 50212);
+    XCTAssertNil(decodedChild.superview);
+    
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:parent];
+    UIView *decodedParent = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqual(decodedParent.tag, 50211);
+    XCTAssertEqual(decodedParent.subviews.count, (NSUInteger)2);
+    XCTAssertEqual([decodedParent.subviews[0] tag], 50212);
+    XCTAssertEqual([decodedParent.subviews[1] tag], 50213);
+    XCTAssertTrue([decodedParent.subviews[0] superview] == decodedParent);
+    XCTAssertTrue([decodedParent.subviews[1] superview] == decodedParent);
+    XCTAssertEqualObjects([YACYAMLKeyedArchiver archivedStringWithRootObject:decodedParent], archived);
+}
+#endif
 
 @end
