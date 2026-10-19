@@ -161,7 +161,21 @@
     } else if([self isEqualToNumber:(__bridge NSNumber *)kCFNumberNaN]) {
         return @".nan";
     } else {
-        return [self stringValue];
+        NSString *string = [self stringValue];
+        
+        const char *objCType = self.objCType;
+        if((objCType[0] == 'd' || objCType[0] == 'f') && !objCType[1] &&
+           ![self isKindOfClass:[NSDecimalNumber class]] &&
+           [string rangeOfString:@"."].location == NSNotFound) {
+            // A floating point number with a whole value (e.g. 1 or 1e+300) must still look
+            // like a float, or it'll be read back as an integer (or, for the exponent, as a
+            // string).  Add the decimal point: 1.0, 1.0e+300.
+            NSRange exponent = [string rangeOfString:@"e"];
+            string = [string stringByReplacingCharactersInRange:NSMakeRange(exponent.location == NSNotFound ? string.length : exponent.location, 0)
+                                                     withString:@".0"];
+        }
+        
+        return string;
     }
 }
 

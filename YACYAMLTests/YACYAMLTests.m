@@ -1072,6 +1072,91 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:tooBig]], tooBig);
 }
 
+- (NSString *)archivedScalarForObject:(id)object
+{
+    // Archive a one-element array and extract the scalar from "- <scalar>\n".
+    NSString *archive = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[object]];
+    NSRange start = [archive rangeOfString:@"- "];
+    XCTAssertNotEqual(start.location, (NSUInteger)NSNotFound, @"Unexpected archive: %@", archive);
+    return [[archive substringFromIndex:NSMaxRange(start)] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+- (void)testFloatingPointNumbersAreArchivedAsFloats
+{
+    // A floating point number that happens to have a whole value must still be written so that
+    // it is read back as a float: '1' would be read as an integer.  Each pair is the number
+    // and how it's written.
+    NSArray *cases = @[
+        @[ @1.0,                @"1.0" ],
+        @[ @-1.0,               @"-1.0" ],
+        @[ @0.0,                @"0.0" ],
+        @[ @100000.0,           @"100000.0" ],
+        @[ @123456789.0,        @"123456789.0" ],
+        @[ @1e15,               @"1000000000000000.0" ],
+        @[ @1e16,               @"1.0e+16" ],
+        @[ @2.5e20,             @"2.5e+20" ],
+        @[ @1e300,              @"1.0e+300" ],
+        @[ @1e-5,               @"1.0e-05" ],
+        @[ @1.5,                @"1.5" ],
+        @[ @(M_PI),             @"3.141592653589793" ],
+        @[ @1.5e300,            @"1.5e+300" ],
+    ];
+    
+    for(NSArray *testCase in cases) {
+        XCTAssertEqualObjects([self archivedScalarForObject:testCase[0]], testCase[1], @"Wrong archived form of %@", testCase[0]);
+        
+        NSNumber *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:@[testCase[0]]]][0];
+        XCTAssertEqual(strcmp(unarchived.objCType, "d"), 0, @"%@ should come back as a double, not %s", testCase[0], unarchived.objCType);
+        XCTAssertEqual(unarchived.doubleValue, [testCase[0] doubleValue], @"Wrong value for %@", testCase[0]);
+    }
+    
+    // Negative zero.
+    XCTAssertEqualObjects([self archivedScalarForObject:@-0.0], @"-0.0");
+    NSNumber *negativeZero = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:[YACYAMLKeyedArchiver archivedStringWithRootObject:@[ @-0.0 ]]][0];
+    XCTAssertTrue(signbit(negativeZero.doubleValue), @"Negative zero should stay negative");
+    
+    // Floats too.
+    XCTAssertEqualObjects([self archivedScalarForObject:[NSNumber numberWithFloat:1.0f]], @"1.0");
+    XCTAssertEqualObjects([self archivedScalarForObject:[NSNumber numberWithFloat:0.5f]], @"0.5");
+    
+    // Integers, booleans, infinities and NaN are as they were.
+    XCTAssertEqualObjects([self archivedScalarForObject:@1], @"1");
+    XCTAssertEqualObjects([self archivedScalarForObject:@-7], @"-7");
+    XCTAssertEqualObjects([self archivedScalarForObject:@(LLONG_MIN)], @"-9223372036854775808");
+    XCTAssertEqualObjects([self archivedScalarForObject:@YES], @"true");
+    XCTAssertEqualObjects([self archivedScalarForObject:@(INFINITY)], @".inf");
+    XCTAssertEqualObjects([self archivedScalarForObject:@(-INFINITY)], @"-.inf");
+    XCTAssertEqualObjects([self archivedScalarForObject:@(NAN)], @".nan");
+    
+    // Decimal numbers are exact, not floating point, and are written as they always were.
+    XCTAssertEqualObjects([self archivedScalarForObject:[NSDecimalNumber decimalNumberWithString:@"42"]], @"42");
+    XCTAssertEqualObjects([self archivedScalarForObject:[NSDecimalNumber decimalNumberWithString:@"18446744073709551616"]], @"18446744073709551616");
+}
+
+- (void)testExplicitFloatTag
+{
+    // A float tag makes a number a float, even if what it tags looks like an integer.
+    for(NSString *string in @[ @"!!float 1", @"!!float \"1\"", @"!!float 0x01", @"!!float +1" ]) {
+        NSNumber *value = [self unarchivedScalar:string];
+        XCTAssertTrue([value isKindOfClass:[NSNumber class]], @"%@ should be a number, got %@", string, value);
+        XCTAssertEqual(strcmp(value.objCType, "d"), 0, @"%@ should be a double, not %s", string, value.objCType);
+        XCTAssertEqual(value.doubleValue, 1.0, @"Wrong value for %@", string);
+    }
+    XCTAssertEqual([[self unarchivedScalar:@"!!float -3"] doubleValue], -3.0);
+    XCTAssertEqual(strcmp([[self unarchivedScalar:@"!!float -3"] objCType], "d"), 0);
+    XCTAssertEqual([[self unarchivedScalar:@"!!float 1.5"] doubleValue], 1.5);
+    XCTAssertEqual([[self unarchivedScalar:@"!!float 190:20:30"] doubleValue], 685230.0);
+    
+    // Without the tag, they're integers.
+    XCTAssertEqual(strcmp([[self unarchivedScalar:@"1"] objCType], "q"), 0);
+    XCTAssertEqual(strcmp([[self unarchivedScalar:@"!!int 1"] objCType], "q"), 0);
+    
+    // Other tags that don't match what they tag are not errors: the value is left as a string.
+    XCTAssertEqualObjects([self unarchivedScalar:@"!!bool maybe"], @"maybe");
+    XCTAssertEqualObjects([self unarchivedScalar:@"!!int abc"], @"abc");
+    XCTAssertEqualObjects([self unarchivedScalar:@"!!str 123"], @"123");
+}
+
 - (void)testBinaryParsing
 {
     NSString *binaryYAML =

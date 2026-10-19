@@ -43,10 +43,12 @@ Archiving: strings that a YAML 1.2 parser reads as something else, but that
 this decoder reads as strings (1e3, 1.5e3, 0o17, 08), are written unquoted.
 Quote anything that either schema would resolve to a different type.  Also,
 NSDate is written as a plain timestamp (a YAML 1.1 type, which Core reads as a
-string), and a double with a whole value (1.0) is written as 1.
+string).  Writing an explicit !!timestamp tag, perhaps only as an option, would
+let parsers that know the tag read dates back as dates, at the cost of noisier
+output.
 
 A scalar with an explicit tag that its content doesn't match (!!bool maybe,
-!!float 1) silently becomes a string or an integer.
+!!int abc) silently becomes a string.
 
 libYAML is a YAML 1.1 parser (NEL, LS and PS are line breaks, for example)
 that accepts %YAML 1.2 directives.  Run the yaml-test-suite against it to see

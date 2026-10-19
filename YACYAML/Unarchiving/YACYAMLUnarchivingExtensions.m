@@ -17,6 +17,21 @@
 @interface YACYAMLMergeKey : NSObject
 @end
 
+// Handles !!float.  (NSNumber handles the other number tags.)
+//
+// Without a tag, a scalar's type has to be worked out from its text.  Text with a
+// decimal point (1.0) is a float, but a whole number written without one (1) looks
+// like an integer, and is read as one.  There is no way to tell, from the text alone,
+// that it was meant to be a float.  The explicit float tag is the only way to say
+// so: '!!float 1'.
+//
+// But the classes that convert scalars are only given the text, not the tag, and
+// NSNumber handles the integer and boolean tags too (as well as untagged scalars),
+// so it can't tell that it was asked for a float.  Registering this class for the
+// float tag alone means that it can: it's only ever asked about !!float scalars.
+@interface YACYAMLFloatTagHandler : NSObject
+@end
+
 static YACYAMLMergeKey *sSharedYACYAMLMergeKey;
 
 /*
@@ -29,6 +44,7 @@ void YACYAMLUnarchivingExtensionsRegister(void)
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSArray class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSDictionary class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSNumber class]];
+    [YACYAMLKeyedUnarchiver registerUnarchivingClass:[YACYAMLFloatTagHandler class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSData class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSSet class]];
     [YACYAMLKeyedUnarchiver registerUnarchivingClass:[NSNull class]];
@@ -41,7 +57,6 @@ void YACYAMLUnarchivingExtensionsRegister(void)
 + (NSArray *)YACYAMLUnarchivingTags
 {
     return [[NSArray alloc] initWithObjects:
-            @"tag:yaml.org,2002:float",
             @"tag:yaml.org,2002:int",
             @"tag:yaml.org,2002:bool",
             nil];
@@ -375,6 +390,29 @@ static NSSet *YACYAMLBoolFalseSet(void)
         NSLog(@"Warning: Could not parse string \"%@\" to NSNumber, using string as-is", string);
         return string;
     }
+}
+
+@end
+
+
+@implementation YACYAMLFloatTagHandler
+
++ (NSArray *)YACYAMLUnarchivingTags
+{
+    return [[NSArray alloc] initWithObjects:
+            @"tag:yaml.org,2002:float",
+            nil];
+}
+
++ (id)objectWithYACYAMLScalarString:(NSString *)string
+{
+    // Anything that NSNumber would read as an integer, an explicit float tag makes a double.
+    NSNumber *number = [NSNumber objectWithYACYAMLScalarString:string];
+    if([number isKindOfClass:[NSNumber class]] &&
+       (strcmp(number.objCType, "q") == 0 || strcmp(number.objCType, "Q") == 0)) {
+        return [NSNumber numberWithDouble:number.doubleValue];
+    }
+    return number;
 }
 
 @end
