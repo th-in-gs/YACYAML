@@ -299,6 +299,11 @@ static int EmitToNSMutableData(void *ext, unsigned char *buffer, size_t size)
     return [self _anchorStringForNumber:_generatedAnchorCount++];
 }
 
+- (NSUInteger)nextAnchorLength
+{
+    return [self _anchorStringForNumber:_generatedAnchorCount].length;
+}
+
 
 #pragma mark - NSCoder
 

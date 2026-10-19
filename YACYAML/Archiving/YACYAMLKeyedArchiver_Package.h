@@ -20,5 +20,7 @@
 
 - (YACYAMLArchivingObject *)previouslySeenArchivingObjectForObject:(id)object;
 - (NSString *)generateAnchor;
+// How long the anchor that generateAnchor will return next is, without generating it.
+- (NSUInteger)nextAnchorLength;
 
 @end

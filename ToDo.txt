@@ -11,8 +11,13 @@ classForClassName:
 
 Ideas:
 
-Generate anchors for strings etc. only if the anchor would take up less space
-than referring to the string directly.  Make this the default mode for scalars.
+Consider making scalar anchors (YACYAMLKeyedArchiverOptionAllowScalarAnchors)
+the default mode for scalars.  That option now only uses an anchor for a scalar
+when that takes up less space than writing the scalar out each time (counting
+the anchor and aliases, but not quotes, or the space after an alias used as a
+mapping key), so it shouldn't make the output longer by more than a character
+or two.  It does make the output harder for a person to read and edit, which is
+why it's not the default.
 
 Match and parse scalars (especially dates) using a 'proper' parser rather than
 regexes (advantage of regexes is that it's easy to verify that they match

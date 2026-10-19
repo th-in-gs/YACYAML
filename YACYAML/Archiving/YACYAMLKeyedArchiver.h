@@ -36,7 +36,9 @@ typedef enum YACYAMLKeyedArchiverOptions {
     // With this option switched on, anchors will be used to ensure
     // that unique strings are output only once, as for other classes of
     // object (although note  this option will interact with 
-    // YACYAMLKeyedArchiverOptionDontUseObjectEquality).
+    // YACYAMLKeyedArchiverOptionDontUseObjectEquality), where that makes
+    // the output smaller.  A scalar that is short, or not used often enough,
+    // for an anchor to save space is still written out in full each time.
     // It might be a good idea to switch this on if you're not intending
     // your archive to be human-readable.
     YACYAMLKeyedArchiverOptionAllowScalarAnchors        = 0x04,

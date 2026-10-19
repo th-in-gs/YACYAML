@@ -22,6 +22,8 @@
 
 @interface YACYAMLArchivingObject ()
 @property (nonatomic, assign) BOOL needsAnchor;
+// How many times this object was archived again, after the first.
+@property (nonatomic, assign) NSUInteger reuseCount;
 @end
 
 @implementation YACYAMLArchivingObject {
@@ -38,11 +40,13 @@
     CFMutableArrayRef _keyedChildren;
     
     BOOL _needsAnchor;
+    NSUInteger _reuseCount;
     NSString *_emittedAnchor;
 }
 
 @synthesize representedObject = _representedObject;
 @synthesize needsAnchor = _needsAnchor;
+@synthesize reuseCount = _reuseCount;
 
 - (id)initWithRepresentedObject:(id)representedObject
                     forArchiver:(YACYAMLKeyedArchiver *)archiver
@@ -73,6 +77,7 @@
         // as needing an anchor in the emitted YAML so that we know to emit one
         // when we come to writing the file.
         archivingObject.needsAnchor = YES;
+        archivingObject.reuseCount += 1;
     } else {
         archivingObject = [[YACYAMLArchivingObject alloc] initWithRepresentedObject:obj
                                                                         forArchiver:_archiver];
@@ -127,6 +132,28 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
     }
 }
 
+// Does this object, which is used more than once, get an anchor?  Objects with children
+// always do (they can refer to themselves).  Scalars only do if that makes the output
+// smaller: an anchor is an extra "&a " on the first use, in return for each of the others
+// being "*a" instead of the whole scalar.  (This is an estimate.  It doesn't count the extra
+// space that an alias used as a mapping key needs, or the quotes round a scalar that needs
+// them, or any that the emitter adds or escapes itself, so it can be a character or two out.)
+- (BOOL)_anchorWouldHelp
+{
+    id obj = self.representedObject;
+    if(![obj respondsToSelector:@selector(YACYAMLScalarString)]) {
+        return YES;
+    }
+    
+    NSUInteger length = strlen([[(id<YACYAMLArchivingCustomEncoding>)obj YACYAMLScalarString] UTF8String] ?: "");
+    NSUInteger anchorLength = [_archiver nextAnchorLength];
+    NSUInteger uses = _reuseCount + 1;
+    
+    NSUInteger withoutAnchor = uses * length;
+    NSUInteger withAnchor = (1 + anchorLength + 1 + length) + (uses - 1) * (1 + anchorLength);
+    return withAnchor < withoutAnchor;
+}
+
 - (void)emitWithEmitter:(yaml_emitter_t *)emitter;
 {
     yaml_event_t event = {};
@@ -140,6 +167,11 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
             yaml_emitter_emit(emitter, &event);
         } else {
             yaml_char_t *anchor = NULL;
+            if(_needsAnchor && ![self _anchorWouldHelp]) {
+                // It's used again, but writing it out each time is smaller.  Every
+                // use will be written out in full (now we know, it's not asked again).
+                _needsAnchor = NO;
+            }
             if(_needsAnchor) {
                 // We know that this object will be referred to again later in
                 // the archive, so generate an anchor for it.

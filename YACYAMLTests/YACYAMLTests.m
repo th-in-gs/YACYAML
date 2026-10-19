@@ -823,6 +823,61 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived], dictionaries);
 }
 
+- (void)testScalarAnchorsOnlyWhenSmaller
+{
+    // With YACYAMLKeyedArchiverOptionAllowScalarAnchors, a repeated scalar is only given an anchor
+    // when that makes the output smaller.  Written out in full each time, n uses of a scalar of
+    // length l take n * l characters.  With an anchor, the first use is "&a " (the anchor name
+    // is one character here) plus the scalar, and the rest are "*a": (1 + 2 + l) + (n - 1) * (1 + 1).
+    // Each case is a scalar, how many times it's used, and whether that's enough for an anchor.
+    NSArray *cases = @[
+        // One character is never worth it, however many times it's used.
+        @[ @"x",         @2,   @NO ],
+        @[ @"x",         @100, @NO ],
+        // Three characters: 3n against 2n + 4, so it takes five uses.
+        @[ @"abc",       @4,   @NO ],
+        @[ @"abc",       @5,   @YES ],
+        // Two uses: 5 characters is a tie (10 against 10), 6 is the first that wins (12 against 11).
+        @[ @"abcde",     @2,   @NO ],
+        @[ @"abcdef",    @2,   @YES ],
+        // Longer strings are worth it from the second use.
+        @[ @"a fairly long string that is repeated", @2, @YES ],
+        @[ @"a fairly long string that is repeated", @3, @YES ],
+        // As are numbers and booleans, by the same rule (and the length of what's written).
+        @[ @1000000,     @3,   @YES ],
+        @[ @1,           @50,  @NO ],
+        @[ @YES,         @2,   @NO ],
+        @[ @YES,         @3,   @YES ],
+    ];
+    
+    for(NSArray *testCase in cases) {
+        id value = testCase[0];
+        NSUInteger count = [testCase[1] unsignedIntegerValue];
+        BOOL expectAnchor = [testCase[2] boolValue];
+        
+        NSMutableArray *values = [NSMutableArray array];
+        for(NSUInteger i = 0; i < count; ++i) {
+            [values addObject:value];
+        }
+        
+        NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:values options:YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+        XCTAssertEqual([archived containsString:@"&"], expectAnchor, @"%@ used %lu times %@ have an anchor:\n%@", value, (unsigned long)count, expectAnchor ? @"should" : @"should not", archived);
+        XCTAssertEqual([archived containsString:@"*"], expectAnchor, @"%@ used %lu times %@ be referred to:\n%@", value, (unsigned long)count, expectAnchor ? @"should" : @"shouldn't", archived);
+        XCTAssertEqualObjects([YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived], values, @"Unarchived objects not equal to archived objects");
+        
+        // The anchor is never used if it doesn't save space.
+        NSString *plain = [YACYAMLKeyedArchiver archivedStringWithRootObject:values];
+        XCTAssertLessThanOrEqual(archived.length, plain.length, @"%@ used %lu times is longer with anchors", value, (unsigned long)count);
+    }
+    
+    // Objects that aren't scalars always get an anchor when they're used more than once,
+    // however small, because that's how cycles are encoded.
+    NSArray *shared = @[ @1 ];
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:@[ shared, shared ] options:YACYAMLKeyedArchiverOptionAllowScalarAnchors];
+    XCTAssertTrue([archived containsString:@"&"], @"A shared collection should have an anchor:\n%@", archived);
+    XCTAssertTrue([archived containsString:@"*"], @"A shared collection should be referred to:\n%@", archived);
+}
+
 - (void)testScalarAnchorsKeepTypes
 {
     // NSNumbers of different kinds compare as equal with isEqual: (@1, @1.0 and @YES all do), but are
