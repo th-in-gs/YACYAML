@@ -272,3 +272,4 @@ YACYAML stood for _Yet Another Cocoa YAML_, but I think it deserves better than 
 - _why the lucky stiff_ for his _Syck_ YAML parser, and Will Thimbleby for his Cocoa extensions to Syck.  Syck's now sadly rather old and somewhat busted, but it's what originally got me using YAML.
 - Kirill Simonov for [libyaml](http://pyyaml.org/wiki/LibYAML), which YACYAML uses to parse and emit raw YAML, and without which I don't think I'd have contemplated this.
 - [Mike Ash](http://mikeash.com/) for his old MAKeyedArchiver, which illuminated some things, and made me feel not so bad about how this decodes object cycles.
+- Everyone who has contributed to YACYAML: see [AUTHORS.md](AUTHORS.md).
