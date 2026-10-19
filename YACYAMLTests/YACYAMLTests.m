@@ -1414,6 +1414,92 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
 
 }
 
+- (void)testDisallowInitWithCoderOption
+{
+    // The option stops tagged classes being instantiated with initWithCoder:, so
+    // YAML from an untrusted source can't make the unarchiver create arbitrary
+    // objects. YACYAMLCapturingReplacingObject records the unarchiver when its
+    // initWithCoder: runs, so gCapturedUnarchiver being nil afterwards shows that
+    // it was never called. The YAML has a tagged mapping for it, a tagged mapping
+    // for a normal object, and a tagged sequence.
+
+    NSString *yaml =
+        @"- !YACYAMLCapturingReplacingObject\n"
+        @"  child: hello\n"
+        @"- !YACYAMLNormalObject\n"
+        @"  child: hello\n"
+        @"- !YACYAMLNormalObject [one, two]\n";
+    
+    // By default, tags name classes, which are instantiated with initWithCoder:.
+    gCapturedUnarchiver = nil;
+    NSArray *unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml];
+    XCTAssertEqual(unarchived.count, (NSUInteger)3);
+    XCTAssertNotNil(gCapturedUnarchiver, @"initWithCoder: should be called by default");
+    XCTAssertTrue([unarchived[1] isKindOfClass:[YACYAMLNormalObject class]], @"Got %@", unarchived[1]);
+    gCapturedUnarchiver = nil;
+    
+    // With the option, they are presented as plain collections, and initWithCoder: is never called.
+    NSArray *expected = @[ @{ @"child": @"hello" }, @{ @"child": @"hello" }, @[ @"one", @"two" ] ];
+    
+    unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder];
+    XCTAssertEqualObjects(unarchived, expected);
+    XCTAssertNil(gCapturedUnarchiver, @"initWithCoder: must not be called with the option set");
+    
+    // The same again, through the NSData entry point.  The NSString method above
+    // is a wrapper around this one, so this mainly guards the NSData method
+    // itself.  'data' is also used by the NSData convenience methods below.
+    NSData *data = [yaml dataUsingEncoding:NSUTF8StringEncoding];
+    unarchived = [YACYAMLKeyedUnarchiver unarchiveObjectWithData:data options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder];
+    XCTAssertEqualObjects(unarchived, expected);
+    XCTAssertNil(gCapturedUnarchiver);
+    
+    // The NSString and NSData convenience methods set the option, except for -YACYAMLDecodeAll.
+    XCTAssertEqualObjects([yaml YACYAMLDecode], expected);
+    XCTAssertEqualObjects([yaml YACYAMLDecodeBasic], expected);
+    XCTAssertEqualObjects([data YACYAMLDecode], expected);
+    XCTAssertEqualObjects([data YACYAMLDecodeBasic], expected);
+    XCTAssertNil(gCapturedUnarchiver);
+    
+    unarchived = [yaml YACYAMLDecodeAll];
+    XCTAssertTrue([unarchived[1] isKindOfClass:[YACYAMLNormalObject class]], @"Got %@", unarchived[1]);
+    XCTAssertNotNil(gCapturedUnarchiver);
+    gCapturedUnarchiver = nil;
+}
+
+- (void)testDisallowInitWithCoderOptionStillDecodesYAMLTypes
+{
+    // The option only stops initWithCoder: being called on tagged classes. The
+    // YAML types themselves must still decode to their Cocoa equivalents. (The
+    // null key is called 'nothing' because a plain 'null' key would itself be YAML
+    // null.)
+
+    NSString *yaml =
+        @"string: text\n"
+        @"integer: 42\n"
+        @"float: 1.5\n"
+        @"boolean: y\n"
+        @"nothing: ~\n"
+        @"date: 2001-12-15T02:59:43Z\n"
+        @"binary: !!binary aGVsbG8=\n"
+        @"sequence: [a, b]\n"
+        @"mapping: { key: value }\n"
+        @"set: !!set { a, b }\n";
+    
+    NSDictionary *unarchived = [yaml YACYAMLDecode];
+    
+    XCTAssertEqualObjects(unarchived[@"string"], @"text");
+    XCTAssertEqualObjects(unarchived[@"integer"], @42);
+    XCTAssertEqualObjects(unarchived[@"float"], @1.5);
+    XCTAssertEqualObjects(unarchived[@"boolean"], @YES);
+    XCTAssertEqualObjects(unarchived[@"nothing"], [NSNull null]);
+    XCTAssertTrue([unarchived[@"date"] isKindOfClass:[NSDate class]]);
+    XCTAssertEqualWithAccuracy([unarchived[@"date"] timeIntervalSince1970], 1008385183, 0.0005);
+    XCTAssertEqualObjects(unarchived[@"binary"], [@"hello" dataUsingEncoding:NSUTF8StringEncoding]);
+    XCTAssertEqualObjects(unarchived[@"sequence"], (@[ @"a", @"b" ]));
+    XCTAssertEqualObjects(unarchived[@"mapping"], (@{ @"key": @"value" }));
+    XCTAssertEqualObjects(unarchived[@"set"], ([NSSet setWithObjects:@"a", @"b", nil]));
+}
+
 - (void)testAnchorReplacementHazard
 {
     // This test verifies that initWithCoder: returning a different object

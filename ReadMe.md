@@ -25,7 +25,26 @@ jamie@th.ingsmadeoutofotherthin.gs, [http://th.ingsmadeoutofotherthin.gs/](http:
 - Call `-YACYAMLEncodedString` (or `-YACYAMLEncodedData`) on Cocoa objects to get a plain-text YAML encoding.  It'll work on all objects you could store in a plist or in JSON, and any others that support `NSCoding`.
 - Use `YACYAMLKeyedArchiver` to encode object graphs, as a replacement for `NSKeyedArchiver`.  
 - Use `YACYAMLKeyedUnarchiver` to decode object graphs encoded with `YACYAMLKeyedArchiver`.   `YACYAMLKeyedUnarchiver` is to `YACYAMLKeyedArchiver` as `NSKeyedUnarchiver` is to `NSKeyedArchiver`.
+- If you are decoding YAML from a source you don't control, see _Decoding YAML you don't trust_ below.
 - See below for how to compile and link YACYAML into your Mac or iOS project.
+
+
+## Decoding YAML you don't trust
+
+By default, `YACYAMLKeyedUnarchiver` behaves like `NSKeyedUnarchiver`: a tag that names a class (`!SomeClass`) makes it create an object of that class and call `-initWithCoder:` on it.  That is what lets it decode arbitrary Cocoa objects, but it also means that YAML from an untrusted source can make it instantiate any class that your process knows about.
+
+If you're decoding YAML that you don't control, switch on `YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder`:
+
+```ObjC
+id decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:yaml
+                                                       options:YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder];
+```
+
+With the option on, tagged mappings and sequences come back as plain `NSDictionary`s and `NSArray`s, and `-initWithCoder:` is never called.  The YAML types listed below under _How much YAML does this support?_ still decode to their Cocoa equivalents.  (Classes that you've deliberately taught the unarchiver to build, using its `YACYAMLUnarchiving…` protocols, are still created.)
+
+The `-YACYAMLDecode` and `-YACYAMLDecodeBasic` methods on `NSString` and `NSData` already set this option.  `-YACYAMLDecodeAll` doesn't, and decodes the same way as `YACYAMLKeyedUnarchiver` does by default.
+
+This limits which objects get created.  It isn't a sandbox - it doesn't, for example, limit the size of the input.
 
 
 ## What's YACYAML's rationale?

@@ -15,16 +15,16 @@ typedef enum YACYAMLKeyedUnarchiverOptions {
     // and its contents are presented as the top-level contents of the archive.
     // This matches the behaviour of YACYAMLKeyedArchiver, which places the 
     // archived contents into an implicit single document.  
-    // If you're using this class to parse YAML that will have mutiple documents
+    // If you're using this class to parse YAML that will have multiple documents
     // in a stream, switching this on causes each document to be a top-level
     // object, instantiated as an NSArray.
     YACYAMLKeyedUnarchiverOptionPresentDocumentsAsArray = 0x01,
     
-    // You whould set this to YES if the YAML file you're parsing is from an 
+    // You would set this to YES if the YAML file you're parsing is from an 
     // unknown source, and you don't want the unarchiver to be instantiating
-    // objects of arbitraty types and calling initWithCoder: on them (of course,
-    // a better strategy might be to make sure all your initWithCoder: methods
-    // are safe...).
+    // objects of arbitrary types and calling initWithCoder: on them. (Making
+    // your own initWithCoder: methods safe isn't enough: a tag can name any
+    // class in the process, including system and third-party ones.)
     YACYAMLKeyedUnarchiverOptionDisallowInitWithCoder   = 0x02,
 } YACYAMLKeyedUnarchiverOptions;
 
