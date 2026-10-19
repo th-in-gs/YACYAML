@@ -2231,4 +2231,44 @@ static YACYAMLKeyedUnarchiver *gCapturedUnarchiver = nil;
     }
 }
 
+- (void)testEmptyCollections
+{
+    // An empty dictionary used to be written as an empty sequence ([]), and read back as an NSArray.
+    // An empty set has the same problem.
+    NSDictionary *dictionary = @{};
+    NSSet *set = [NSSet set];
+    NSArray *array = @[];
+    
+    NSString *archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:dictionary];
+    XCTAssertTrue([archived hasPrefix:@"{}"], @"Got %@", archived);
+    id decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertTrue([decoded isKindOfClass:[NSDictionary class]], @"Got %@ from %@", [decoded class], archived);
+    XCTAssertEqual([decoded count], (NSUInteger)0);
+    
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:set];
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertTrue([decoded isKindOfClass:[NSSet class]], @"Got %@ from %@", [decoded class], archived);
+    XCTAssertEqual([decoded count], (NSUInteger)0);
+    
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:array];
+    XCTAssertTrue([archived hasPrefix:@"[]"], @"Got %@", archived);
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertTrue([decoded isKindOfClass:[NSArray class]], @"Got %@ from %@", [decoded class], archived);
+    
+    // And inside other collections, as values and as elements.
+    NSDictionary *nested = @{ @"dictionary": dictionary, @"set": set, @"array": array, @"list": @[ dictionary, set, array ] };
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:nested];
+    decoded = [YACYAMLKeyedUnarchiver unarchiveObjectWithString:archived];
+    XCTAssertEqualObjects(decoded, nested, @"Did not round trip:\n%@", archived);
+    XCTAssertTrue([decoded[@"dictionary"] isKindOfClass:[NSDictionary class]]);
+    XCTAssertTrue([decoded[@"set"] isKindOfClass:[NSSet class]]);
+    XCTAssertTrue([decoded[@"array"] isKindOfClass:[NSArray class]]);
+    NSArray *list = decoded[@"list"];
+    XCTAssertTrue([list[0] isKindOfClass:[NSDictionary class]] && [list[1] isKindOfClass:[NSSet class]] && [list[2] isKindOfClass:[NSArray class]], @"Got %@", list);
+    
+    // An object that isn't a collection, with nothing to encode, is still an empty sequence.
+    archived = [YACYAMLKeyedArchiver archivedStringWithRootObject:[[YACYAMLNormalObject alloc] init]];
+    XCTAssertTrue([archived rangeOfString:@"[]"].location != NSNotFound, @"Got %@", archived);
+}
+
 @end

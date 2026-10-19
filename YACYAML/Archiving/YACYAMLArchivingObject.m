@@ -236,8 +236,16 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                 yaml_emitter_emit(emitter, &event);
             } else {
                 // This is an obect with children.
-                if(_keyedChildren) {
-                    // This object has keyed chidren, so we use a map to 
+                
+                // An object with no children at all is an empty sequence, unless it's one of the
+                // types that are mappings (an NSDictionary, or an NSSet, which is a mapping with
+                // null values), when it's an empty mapping.
+                BOOL emptyMapping = !_keyedChildren && !_unkeyedChildren &&
+                                    ([customTag isEqualToString:@YAML_MAP_TAG] ||
+                                     [customTag isEqualToString:@"tag:yaml.org,2002:set"]);
+                
+                if(_keyedChildren || emptyMapping) {
+                    // This object has keyed chidren (or is an empty mapping), so we use a map to 
                     // represent it.
                     yaml_mapping_start_event_initialize(&event, 
                                                         anchor,
@@ -263,7 +271,7 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                         yaml_emitter_emit(emitter, &event);
                     }
                 }
-                if(_unkeyedChildren || !_keyedChildren) {
+                if(_unkeyedChildren || (!_keyedChildren && !emptyMapping)) {
                     // Emit a sequence for the unkeyed children.
                     // Note that, in the case that there are no keyed children,
                     // we emit this even if there's no unkeyed children, so a 
@@ -289,8 +297,8 @@ static CFMutableArrayRef CreateNonRetainingArray(void)
                     yaml_sequence_end_event_initialize(&event);
                     yaml_emitter_emit(emitter, &event);
                 }
-                if(_keyedChildren) {
-                    NSParameterAssert((CFArrayGetCount(_keyedChildren) % 2) == 0);
+                if(_keyedChildren || emptyMapping) {
+                    NSParameterAssert(!_keyedChildren || (CFArrayGetCount(_keyedChildren) % 2) == 0);
                     
                     // Emit the keyed children (the mapping we're emitting these
                     // into was started above, before we dealt with any
